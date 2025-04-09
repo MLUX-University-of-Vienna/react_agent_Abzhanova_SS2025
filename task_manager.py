@@ -6,3 +6,4 @@ response = ollama.generate(
 )
 
 print("Response:", response['response'])
+
