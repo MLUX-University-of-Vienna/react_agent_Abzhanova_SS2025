@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import dict
+from typing import Dict,Any, Optional
 
 class ToolResponse:
-    def __init__(self, content:str, success:bool = True, metadata: dict = None):
+    def __init__(self, content:str, success:bool, metadata: Optional[Dict[str,Any]] = None):
         self.content = content
         self.success = success
         self.metadata = metadata or {}
