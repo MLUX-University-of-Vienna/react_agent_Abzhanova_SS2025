@@ -1,5 +1,12 @@
 from abc import ABC, abstractmethod
+from typing import dict
 
+class ToolResponse:
+    def __init__(self, content:str, success:bool = True, metadata: dict = None):
+        self.content = content
+        self.success = success
+        self.metadata = metadata or {}
+ 
 class AgentTool(ABC):
     @property
     @abstractmethod
@@ -14,7 +21,7 @@ class AgentTool(ABC):
         pass
         
     @abstractmethod
-    def execute(self, input: str) -> str:
+    def execute(self, input:str) -> ToolResponse:
         """Execute the tool with the given input"""
         pass
 
