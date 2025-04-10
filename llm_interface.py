@@ -1,4 +1,5 @@
 import abc from ABC, abstractmethod
+import ollama
 
 class LLMInterface(ABC):
     @abstractmethod
