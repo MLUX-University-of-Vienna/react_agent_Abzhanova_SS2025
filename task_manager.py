@@ -1,4 +1,5 @@
 import ollama
+import logging
 
 class ToolReponse:
     def __init__ (self, content: str, success: bool, metadata: dict = None):
@@ -24,13 +25,11 @@ class TaskManager:
     def __init__(self, llm: LLMInterface, tools: Dict[str, AgentTool]):
         self.llm = llm,
         self.tools = tools
+    
+    def generateResponseFromLLM (self, prompt: str) -> str:
+        response = ollama.generate(
+            model = "deepseek-r1:8b", 
+            prompt = prompt,
+        )
+        return response['response']
 
-
-"""
-response = ollama.generate(
-    model = "deepseek-r1:8b", 
-    prompt = "What is the universe?"
-)
-
-print("Response:", response['response'])
-"""
