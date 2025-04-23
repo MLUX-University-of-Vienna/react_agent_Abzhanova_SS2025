@@ -33,3 +33,7 @@ class TaskManager:
         )
         return response['response']
 
+    def initialise_tools(self) -> Dict [str, Callable]:
+        return{
+            "calculator": self.calculator
+        }
