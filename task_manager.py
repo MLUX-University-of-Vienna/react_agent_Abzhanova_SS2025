@@ -13,6 +13,13 @@ class AgentReponse:
         self.iteration = iteration
         self.sources = sourcesor []
 
+class Event(Enum): 
+    BEFORE_TOOL_EXECUTE ="" "before_tool_execute"
+    AFTER_TOOL_EXECUTE = "after_tool_execute"
+    BEFORE_LLM_CALL = "before_llm_call"
+    AFTER_LLM_CALL = "after_llm_call"
+    ON_ERROR = "on_error"
+
 class TaskManager:
     def __init__(self, llm: LLMInterface, tools: Dict[str, AgentTool]):
         self.llm = llm,
