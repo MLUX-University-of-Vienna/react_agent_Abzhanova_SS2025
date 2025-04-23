@@ -1,0 +1,36 @@
+import re
+from abc import ABC, abstractmethod
+from typing import Dict,Any, Optional
+import ast
+
+class CalculatorTool(AgentTool):
+    @property
+    def name(self):
+        return  "Calculator"
+
+    @property 
+    def description(self): 
+        return "Used for mathematical calculatins and numerical expressions"
+
+    def evaluate_math_expression(self, expression: str) -> Optional[float]:
+        """Safely evaluate a math expression using ast. Only allows basic arithmetic"""
+        allowed_nodes = (
+            ast.Expression, ast.BinOp, ast.UnaryOp,
+            ast.Constant, ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow,
+            ast.USub, ast.UAdd, ast.Load, ast.Mod, ast.FloorDiv
+        )
+        
+        node = ast.parse(expression, mode='eval')
+        if not all(isinstance(n, allowed_nodes) for n in ast.walk(node)):
+            raise ValueError("Invalid characters or operations used")
+        
+        return eval(compile(node, "<string>", "eval"))
+
+    def execute(self, input: str) -> ToolResponse:
+        try:
+            sanitised = re.sub(r'[^0-9+\-*/(). ]', '', input)
+            result = self.evaluate_math_expression(sanitised)
+            return ToolResponse(content = str(result), success = True)
+        except Exception as e:
+            logging.warning(f"CalculatorTool error on input '{input}': {e}")
+            return ToolResponse(content = f"Error: {str(e)}", success = False)
