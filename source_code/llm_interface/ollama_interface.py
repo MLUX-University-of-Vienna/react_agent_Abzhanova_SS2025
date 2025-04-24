@@ -1,4 +1,4 @@
-import abc from ABC, abstractmethod
+from .llm_interface import LLMInterface
 import ollama
 
 class OllamaInterface(LLMInterface):

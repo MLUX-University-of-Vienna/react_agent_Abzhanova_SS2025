@@ -1,7 +1,7 @@
 import re
 from typing import Dict
-from llm_interface import LLMInterface
-from tool_base import AgentTool
+from llm_interface.llm_interface import LLMInterface
+from tool_management.tool_base import AgentTool
 
 
 class TaskManager:
