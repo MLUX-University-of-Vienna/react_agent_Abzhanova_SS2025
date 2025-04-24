@@ -1,4 +1,7 @@
-import ollama
+import re
+from typing import Dict
+from llm_interface import LLMInterface
+from tool_base import AgentTool
 
 
 class TaskManager:
