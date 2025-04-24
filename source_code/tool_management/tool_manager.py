@@ -7,7 +7,6 @@ class ToolResponse:
     def __init__(self, content:str, success:bool, metadata: Optional[Dict[str,Any]] = None):
         self.content = content
         self.success = success
-        """metadata may contain contextual info/URLs/Source info/Debug Data"""
         self.metadata = metadata or {}
  
 class AgentTool(ABC):

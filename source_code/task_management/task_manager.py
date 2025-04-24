@@ -1,25 +1,5 @@
 import ollama
-import logging
 
-class ToolReponse:
-    def __init__ (self, content: str, success: bool, metadata: dict = None):
-        self.content = content
-        self.success = success
-        self.metadata = metadata or {} 
-
-class AgentReponse:
-    def __init__ (self, response: str, tool_uses: int = 0, iteration: int = 0, sources: List [str]= None):
-        self.response = esponse
-        self.tool_uses = tool_uses
-        self.iteration = iteration
-        self.sources = sources []
-
-class Event(Enum): 
-    BEFORE_TOOL_EXECUTE ="" "before_tool_execute"
-    AFTER_TOOL_EXECUTE = "after_tool_execute"
-    BEFORE_LLM_CALL = "before_llm_call"
-    AFTER_LLM_CALL = "after_llm_call"
-    ON_ERROR = "on_error"
 
 class TaskManager:
     def __init__(self, llm: LLMInterface, tools: Dict[str, AgentTool]):
@@ -32,14 +12,11 @@ class TaskManager:
             prompt = prompt,
         )
         return response['response']
-
-    def initialise_tools(self) -> Dict [str, Callable]:
-        return{
-            "calculator": self.calculator
-        }
     
     def build_initial_prompt (self, query: str) -> str:
-        tool_descriptions = "calculator"
+        tool_descriptions = "\n".join(
+            f"{tool.name}: {tool.description}" for tool in self.tools.values()
+        )
 
         return f"""You are a ReAct agent designed to solve complex problems. Follow these steps:
 
@@ -61,3 +38,46 @@ class TaskManager:
             Begin!
 
             Question: {query}"""
+
+    def parse_response(selff, reponse: str) -> Dict[str, str]:
+        thought = ""
+        action = ""
+        action_input = ""
+
+        thought_match = re.search(r'Thought:\s*(.*?)(?:\nAction:|$)', response, re.DOTALL)
+        if thought_match:
+            thought = thought_match.group(1).strip()
+        
+        action_match = re.search(r'Action:\s*(\w+)', response)
+        if action_match:
+            action = action_match.group(1).strip()
+        
+        input_match = re.search(r'Action Input:\s*(.*?)(?:\n|$)', response, re.DOTALL)
+        if input_match:
+            action_input = input_match.group(1).strip()
+
+        return {
+            "thought": thought,
+            "action": action,
+            "action_input": action_input,
+            "final_answer": "Final Answer:" in response
+        }
+
+    def run(self, query: str, max_iters: int = 5) -> str:
+        prompt = self._build_react_prompt(query)
+        history = []
+        
+        for _ in range(max_iters):
+            response = self.generate(prompt)
+            parsed = self.parse_response(response)
+            
+            if parsed["final_answer"]:
+                return response.split("Final Answer:")[-1].strip()
+                
+            if parsed["action"] and parsed["action"] in self.tools:
+                tool_output = self.tools[parsed["action"]](parsed["action_input"])
+                prompt += f"\nObservation: {tool_output}"
+            else:
+                prompt += "\nObservation: Invalid action or missing action input"
+                
+        return "Maximum iterations reached without final answer."
