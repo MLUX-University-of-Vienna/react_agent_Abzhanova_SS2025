@@ -39,45 +39,16 @@ class TaskManager:
 
             Question: {query}"""
 
-    def parse_response(selff, reponse: str) -> Dict[str, str]:
-        thought = ""
-        action = ""
-        action_input = ""
-
-        thought_match = re.search(r'Thought:\s*(.*?)(?:\nAction:|$)', response, re.DOTALL)
-        if thought_match:
-            thought = thought_match.group(1).strip()
-        
-        action_match = re.search(r'Action:\s*(\w+)', response)
-        if action_match:
-            action = action_match.group(1).strip()
-        
-        input_match = re.search(r'Action Input:\s*(.*?)(?:\n|$)', response, re.DOTALL)
-        if input_match:
-            action_input = input_match.group(1).strip()
+    def parse_response(self, response: str) -> Dict[str, str]:
+        thought = re.search(r'Thought:\s*(.*?)(?:\nAction:|$)', response, re.DOTALL)
+        action = re.search(r'Action:\s*(\w+)', response)
+        action_input = re.search(r'Action Input:\s*(.*?)(?:\n|$)', response, re.DOTALL)
+        final_answer = re.search(r'Final Answer:\s*(.*)', response, re.DOTALL)
 
         return {
-            "thought": thought,
-            "action": action,
-            "action_input": action_input,
-            "final_answer": "Final Answer:" in response
+            "thought": thought.group(1).strip() if thought else "",
+            "action": action.group(1).strip() if action else "",
+            "action_input": action_input.group(1).strip() if action_input else "",
+            "final_answer": final_answer.group(1).strip() if final_answer else None
         }
 
-    def run(self, query: str, max_iters: int = 5) -> str:
-        prompt = self._build_react_prompt(query)
-        history = []
-        
-        for _ in range(max_iters):
-            response = self.generate(prompt)
-            parsed = self.parse_response(response)
-            
-            if parsed["final_answer"]:
-                return response.split("Final Answer:")[-1].strip()
-                
-            if parsed["action"] and parsed["action"] in self.tools:
-                tool_output = self.tools[parsed["action"]](parsed["action_input"])
-                prompt += f"\nObservation: {tool_output}"
-            else:
-                prompt += "\nObservation: Invalid action or missing action input"
-                
-        return "Maximum iterations reached without final answer."
