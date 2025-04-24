@@ -12,7 +12,7 @@ class AgentReponse:
         self.response = esponse
         self.tool_uses = tool_uses
         self.iteration = iteration
-        self.sources = sourcesor []
+        self.sources = sources []
 
 class Event(Enum): 
     BEFORE_TOOL_EXECUTE ="" "before_tool_execute"
@@ -37,3 +37,27 @@ class TaskManager:
         return{
             "calculator": self.calculator
         }
+    
+    def build_initial_prompt (self, query: str) -> str:
+        tool_descriptions = "calculator"
+
+        return f"""You are a ReAct agent designed to solve complex problems. Follow these steps:
+
+                1. Think step-by-step about how to solve the problem
+                2. Use tools when needed (one per action)
+                3. Combine information to form a final answer
+
+            Available Tools:
+                {tool_descriptions}
+
+            Format for tool use:
+                Thought: Your reasoning
+                Action: tool_name
+                Action Input: input_for_tool
+
+            When you have the final answer:
+            Final Answer: Your complete response
+
+            Begin!
+
+            Question: {query}"""
