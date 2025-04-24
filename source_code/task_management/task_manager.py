@@ -52,3 +52,25 @@ class TaskManager:
             "final_answer": final_answer.group(1).strip() if final_answer else None
         }
 
+
+    def run(self, query: str, max_iters: int = 5) -> str:
+        prompt = self.build_prompt(query)
+        history = prompt
+
+        for _ in range(max_iters):
+            response = self.llm.generate(history)
+            parsed = self.parse_response(response)
+
+            if parsed["final_answer"]:
+                return parsed["final_answer"]
+
+            if parsed["action"] in self.tools:
+                tool = self.tools[parsed["action"]]
+                tool_response = tool.execute(parsed["action_input"])
+                observation = f"Observation: {tool_response.content}"
+            else:
+                observation = "Observation: Invalid or unknown action"
+
+            history += f"\n{response}\n{observation}"
+
+        return "Maximum iterations reached without a final answer."
