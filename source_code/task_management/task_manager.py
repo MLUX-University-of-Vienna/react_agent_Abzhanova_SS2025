@@ -1,12 +1,12 @@
 import re
 from typing import Dict
 from llm_interface.llm_interface import LLMInterface
-from tool_management.tool_base import AgentTool
+from tool_management.tool_manager import AgentTool
 
 
 class TaskManager:
     def __init__(self, llm: LLMInterface, tools: Dict[str, AgentTool]):
-        self.llm = llm,
+        self.llm = llm
         self.tools = tools
     
     def generateResponseFromLLM (self, prompt: str) -> str:
@@ -57,7 +57,7 @@ class TaskManager:
 
 
     def run(self, query: str, max_iters: int = 5) -> str:
-        prompt = self.build_prompt(query)
+        prompt = self.build_initial_prompt(query)
         history = prompt
 
         for _ in range(max_iters):
