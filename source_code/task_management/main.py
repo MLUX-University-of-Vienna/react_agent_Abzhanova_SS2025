@@ -1,3 +1,8 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
 from llm_interface.ollama_interface import OllamaInterface
 from tool_management.calculator_tool import CalculatorTool
 from task_management.task_manager import TaskManager
