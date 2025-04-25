@@ -15,4 +15,9 @@ agent = TaskManager(llm=llm, tools=tools)
 
 query = "calculate 5*3"
 result = agent.run(query)
-print("Answer:", result)
+
+print("\n--- FINAL ANSWER ---")
+print(result["final_answer"])
+
+print("\n--- FULL OUTPUT ---")
+print(result["full_output"])

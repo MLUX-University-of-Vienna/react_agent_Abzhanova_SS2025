@@ -65,7 +65,10 @@ class TaskManager:
             parsed = self.parse_response(response)
 
             if parsed["final_answer"]:
-                return parsed["final_answer"]
+                return {
+                    "final_answer": parsed["final_answer"],
+                    "full_output": response
+                }
 
             if parsed["action"] in self.tools:
                 tool = self.tools[parsed["action"]]
