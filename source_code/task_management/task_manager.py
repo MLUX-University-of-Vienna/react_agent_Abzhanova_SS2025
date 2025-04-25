@@ -21,7 +21,8 @@ class TaskManager:
             f"{tool.name}: {tool.description}" for tool in self.tools.values()
         )
 
-        return f"""You are a ReAct agent designed to solve complex problems. Follow these steps:
+        return f"""You are a ReAct agent designed to solve complex problems. Your job is to think aloud and always call a tool when a calculation is involved. Do not try to calculate on your own — always use the calculator.
+        Follow these steps:
 
                 1. Think step-by-step about how to solve the problem
                 2. Use tools when needed (one per action)

@@ -9,11 +9,11 @@ from task_management.task_manager import TaskManager
 
 llm = OllamaInterface(model="deepseek-r1:8b")
 calculator = CalculatorTool()
-tools = {calculator.name: calculator}
+tools = {"calculator": CalculatorTool()}
 
 agent = TaskManager(llm=llm, tools=tools)
 
-query = "calculate 5*3"
+query = "What is (15 * 3 + 2) / 5?"
 result = agent.run(query)
 
 print("\n--- FINAL ANSWER ---")
