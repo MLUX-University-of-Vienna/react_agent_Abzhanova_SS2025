@@ -161,6 +161,7 @@ class TaskManager:
         final_confidence = 0.0
         previous_answer = None
         tool_result_cache = {}
+        
 
         initial = self.generator.generate(query)
         thoughts.append(f"Initial Thought: {initial}")
@@ -203,6 +204,11 @@ class TaskManager:
 
             answer = self.evaluator.generate_answer(query, result)
             answer_conf = self.conf_assess.assess(answer)
+
+            if previous_answer and answer.strip().lower() == previous_answer.strip().lower():
+                thoughts.append("Answer converged — same as previous, stopping")
+                break
+            previous_answer = answer
 
             if not final_answer or answer_conf > final_confidence:
                 final_answer = answer
