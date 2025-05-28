@@ -27,8 +27,11 @@ class RegexPatternToolSelector(ToolSelectionStrategy):
                 return candidates[0]
             return self._ask_llm_to_choose(query, candidates, tools)
         
+        all_tool_names = list(tools.keys())
+        return self._ask_llm_to_choose(query, all_tool_names, tools)
         
-        def _ask_llm_to_choose(self, query: str, candidates: List[str], tools: dict[str, AgentTool]) -> Optional[str]:
+        
+    def _ask_llm_to_choose(self, query: str, candidates: List[str], tools: dict[str, AgentTool]) -> Optional[str]:
         tool_descriptions = "\n".join(
             f"- {name}: {tools[name].description.strip()}" for name in candidates
         )
