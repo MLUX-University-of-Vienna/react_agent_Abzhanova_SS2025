@@ -3,7 +3,7 @@ from llm.llm_interface import LLMInterface
 from typing import List, Optional
 from tool_management.tools.agent_tool import AgentTool
 from .tool_selection_strategy import ToolSelectionStrategy
-import loggings
+import logging
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
