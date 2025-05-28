@@ -58,7 +58,9 @@ Result: {result}
 Format:
 <think>analysis</think>
 Final Answer: <answer>'''
-        return self.llm.generate(prompt).strip()
+        output = self.llm.generate(prompt).strip()
+        logger.debug(f"ResultEvaluator.generate_answer Output:\n{output}")
+        return output
 
 class AnswerGenerator:
     def __init__(self, llm: LLMInterface):
