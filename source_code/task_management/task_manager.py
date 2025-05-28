@@ -45,7 +45,9 @@ Query: {query}
 Result: {result}
 
 Assessment:''' 
-        return self.llm.generate(prompt).strip()
+        output = self.llm.generate(prompt).strip()
+        logger.debug(f"ResultEvaluator.evaluate Output:\n{output}")
+        return output
 
     def generate_answer(self, query: str, result: str) -> str:
         prompt = f'''Based on this result, answer the query:
