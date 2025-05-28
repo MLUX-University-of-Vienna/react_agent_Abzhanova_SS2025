@@ -35,6 +35,7 @@ class RegexPatternToolSelector(ToolSelectionStrategy):
     def choose_tool(self, query: str, candidates: List[str], tools: dict[str, AgentTool]) -> Optional[str]:
         if candidates:
             if len(candidates) == 1:
+                logger.info(f"Only one candidate matched: {candidates[0]}")
                 return candidates[0]
             return self._ask_llm_to_choose(query, candidates, tools)
         
@@ -56,6 +57,7 @@ Candidate tools:
 
 Which tool is best suited for this query? Respond with ONLY the tool name."""
         
+        logger.info(f"LLM selected tool: '{choice}'")
         choice = self.llm.generate(prompt).strip()
         return choice if choice in candidates else None
         
