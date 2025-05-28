@@ -193,16 +193,11 @@ class TaskManager:
             eval_ = self.evaluator.evaluate(query, result)
             thoughts.append(f"Evaluation: {eval_}")
 
-            answer = self.evaluator.generate_answer(query, result)
-            if not final_answer or self.conf_assess.assess(answer) > self.conf_assess.assess(final_answer):
+            if not final_answer or answer_conf > final_confidence:
                 final_answer = answer
-
-            if self.conf_assess.assess(answer) >= self.confidence_threshold:
-                break
-
-            if self.stuck_det.is_stuck(thoughts, actions):
-                thoughts.append("Detected diminishing returns - terminating")
-                break
+                final_confidence = answer_conf
+                thoughts.append(f"Promoted better answer with confidence {answer_conf:.2f}")
+            
 
         if not final_answer:
             final_answer = self.ans_gen.fallback(query)
