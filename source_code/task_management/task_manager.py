@@ -185,8 +185,15 @@ class TaskManager:
                 clarification = self.selector.ask_clarification(query)
                 return {"clarification": clarification}
 
-            # Executing and evaluatng
+            # Caching of tool results
             tool_attempts[tool_name] += 1
+            if (tool_name, query) in tool_result_cache:
+                result = tool_result_cache[(tool_name, query)]
+            else:
+                result = self.executor.execute(tool_name, query)
+                tool_result_cache[(tool_name, query)] = result
+
+            # Executing and evaluatng
             result = self.executor.execute(tool_name, query)
             actions.append(f"Used {tool_name}")
             observations.append(result)
