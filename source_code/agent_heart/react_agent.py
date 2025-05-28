@@ -2,6 +2,7 @@ from typing import Dict
 from llm.llm_interface import LLMInterface
 from tool_management.tools.agent_tool import AgentTool
 from tool_management.tool_selection.llm_based_strategy import LLMToolSelectionStrategy
+from tool_selection.regex_pattern_tool_selection_strategy import RegexPatternToolSelector
 from query_separation.llm_based_query_separation import LLMQuerySeparationStrategy
 from tool_management.tool_selection.hierarchical_tool_selection_strategy import HierarchicalToolSelectionStrategy
 from task_management.task_manager import TaskManager
@@ -9,7 +10,7 @@ from task_management.task_manager import TaskManager
 class ReActAgent:
     def __init__(self, llm: LLMInterface, tools: Dict[str, AgentTool]):
         self.separator = LLMQuerySeparationStrategy(llm)
-        self.selector  = HierarchicalToolSelectionStrategy(llm)
+        self.selector  = RegexPatternToolSelector(llm)
         self.task_manager = TaskManager(llm, tools, self.selector)
         self.llm = llm
 
