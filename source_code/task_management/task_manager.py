@@ -194,7 +194,6 @@ class TaskManager:
                 tool_result_cache[(tool_name, query)] = result
 
             # Executing and evaluatng
-            result = self.executor.execute(tool_name, query)
             actions.append(f"Used {tool_name}")
             observations.append(result)
             used_tools.append(tool_name)
