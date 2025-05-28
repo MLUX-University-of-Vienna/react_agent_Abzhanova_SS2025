@@ -208,6 +208,7 @@ class TaskManager:
 
         if not final_answer:
             final_answer = self.ans_gen.fallback(query)
+            thoughts.append("Fallback triggered after all logic paths")
 
         logger.info(f"\n=== Final LLM Output ===\n{final_answer}")
         logger.info(f"\n=== Thought Process ===\n{chr(10).join(thoughts)}")
