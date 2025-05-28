@@ -202,7 +202,9 @@ class TaskManager:
                 thoughts.append("Answer confidence threshold met - terminating")
                 break
             
-
+            if self.stuck_det.is_stuck(thoughts, actions):
+            thoughts.append("Detected diminishing returns - terminating")
+            break
 
         if not final_answer:
             final_answer = self.ans_gen.fallback(query)
