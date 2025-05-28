@@ -22,11 +22,10 @@ class RegexPatternToolSelector(ToolSelectionStrategy):
         return candidates
 
     def choose_tool(self, query: str, candidates: List[str], tools: dict[str, AgentTool]) -> Optional[str]:
-        if not candidates:
-            return None
-        
-        if len(candidates) == 1:
-            return candidates[0]
+        if candidates:
+            if len(candidates) == 1:
+                return candidates[0]
+            return self._ask_llm_to_choose(query, candidates, tools)
         
         tool_descriptions = "\n".join(
             f"- {name}: {tools[name].description}" for name in candidates
@@ -36,7 +35,7 @@ class RegexPatternToolSelector(ToolSelectionStrategy):
 
 Query: {query}
 
-Candidate tools:
+Available tools:
 {tool_descriptions}
 
 Which tool is best suited for this query? Return only the tool name."""
