@@ -62,4 +62,6 @@ Which tool is best suited for this query? Respond with ONLY the tool name."""
         return choice if choice in candidates else None
         
     def ask_clarification(self, query: str) -> str:
-        return f"I couldn't match your question \"{query}\" to any available tools. Could you clarify what you're asking?"
+        message = f"I couldn't match your question \"{query}\" to any available tools. Could you clarify what you're asking?"
+        logger.info(f"Asking clarification: {message}")
+        return message
