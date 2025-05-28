@@ -20,7 +20,9 @@ Question: {query}
 Response format:
 THOUGHT: <analysis>
 NEEDS_TOOL: <yes|no>'''
-        return self.llm.generate(prompt).strip()
+        output = self.llm.generate(prompt).strip()
+        logger.debug(f"InitialThoughtGenerator Output:\n{output}")
+        return output
 
 class ToolExecutor:
     def __init__(self, tools: Dict[str, AgentTool]):
