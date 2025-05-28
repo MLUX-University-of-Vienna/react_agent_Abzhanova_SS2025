@@ -5,6 +5,9 @@ from llm.llm_interface import LLMInterface
 from tool_management.tools.agent_tool import AgentTool, ToolResponse
 from tool_management.tool_selection.tool_selection_strategy import ToolSelectionStrategy
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG) 
+
 class InitialThoughtGenerator:
     def __init__(self, llm: LLMInterface):
         self.llm = llm
