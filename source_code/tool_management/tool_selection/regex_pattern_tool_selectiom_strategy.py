@@ -18,3 +18,6 @@ class RegexPatternToolSelector(ToolSelectionStrategy):
             except Exception as e:
                 continue            
         return candidates
+
+    
+    def choose_tool(self, query: str, candidates: List[str], tools: dict[str, AgentTool]) -> Optional[str]:
