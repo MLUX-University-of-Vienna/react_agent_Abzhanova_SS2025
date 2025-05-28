@@ -80,7 +80,9 @@ Answer:'''
 Question: {query}
 
 Response:''' 
-        return self.llm.generate(prompt).strip()
+        output = self.llm.generate(prompt).strip()
+        logger.debug(f"AnswerGenerator.direct Output:\n{output}")
+        return output
 
 class ConfidenceAssessor:
     def __init__(self, llm: LLMInterface):
