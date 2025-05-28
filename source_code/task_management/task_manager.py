@@ -7,6 +7,9 @@ from tool_management.tool_selection.tool_selection_strategy import ToolSelection
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG) 
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
+logger.addHandler(handler)
 
 class InitialThoughtGenerator:
     def __init__(self, llm: LLMInterface):
