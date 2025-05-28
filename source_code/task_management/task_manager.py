@@ -198,6 +198,11 @@ class TaskManager:
                 final_confidence = answer_conf
                 thoughts.append(f"Promoted better answer with confidence {answer_conf:.2f}")
             
+            if answer_conf >= self.confidence_threshold:
+                thoughts.append("Answer confidence threshold met - terminating")
+                break
+            
+
 
         if not final_answer:
             final_answer = self.ans_gen.fallback(query)
