@@ -19,8 +19,22 @@ class RegexPatternToolSelector(ToolSelectionStrategy):
                 continue            
         return candidates
 
-    
     def choose_tool(self, query: str, candidates: List[str], tools: dict[str, AgentTool]) -> Optional[str]:
         if not candidates:
             return None
         
+        tool_descriptions = "\n".join(
+            f"- {name}: {tools[name].description}" for name in candidates
+        )
+
+        prompt = f"""You are an intelligent agent assistant helping to select the most suitable tool for a task.
+
+Query: {query}
+
+Candidate tools:
+{tool_descriptions}
+
+Which tool is best suited for this query? Return only the tool name."""
+        
+        choice = self.llm.generate(prompt).strip()
+        return choice if choice in candidates else None
