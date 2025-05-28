@@ -102,7 +102,9 @@ Consider:
 
 Respond only with the confidence score (0.0-1.0):'''
         try:
-            return float(self.llm.generate(prompt).strip())
+            output = self.llm.generate(prompt).strip()
+            logger.debug(f"ConfidenceAssessor Output:\n{output}")
+            return float(output)
         except:
             return 0.5
 
