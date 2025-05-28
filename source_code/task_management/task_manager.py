@@ -201,6 +201,9 @@ class TaskManager:
         if not final_answer:
             final_answer = self.ans_gen.fallback(query)
 
+        logger.info(f"\n=== Final LLM Output ===\n{final_answer}")
+        logger.info(f"\n=== Thought Process ===\n{chr(10).join(thoughts)}")
+
         return {
             "final_answer": final_answer,
             "thought_process": "\n".join(thoughts),
