@@ -57,8 +57,8 @@ Candidate tools:
 
 Which tool is best suited for this query? Respond with ONLY the tool name."""
         
-        logger.info(f"LLM selected tool: '{choice}'")
         choice = self.llm.generate(prompt).strip()
+        logger.info(f"LLM selected tool: '{choice}'")
         return choice if choice in candidates else None
         
     def ask_clarification(self, query: str) -> str:
