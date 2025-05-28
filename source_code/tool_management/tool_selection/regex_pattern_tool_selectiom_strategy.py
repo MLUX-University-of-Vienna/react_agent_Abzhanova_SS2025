@@ -23,6 +23,9 @@ class RegexPatternToolSelector(ToolSelectionStrategy):
         if not candidates:
             return None
         
+        if len(candidates) == 1:
+            return candidates[0]
+        
         tool_descriptions = "\n".join(
             f"- {name}: {tools[name].description}" for name in candidates
         )
