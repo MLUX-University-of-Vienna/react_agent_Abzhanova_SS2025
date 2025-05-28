@@ -21,3 +21,6 @@ class RegexPatternToolSelector(ToolSelectionStrategy):
 
     
     def choose_tool(self, query: str, candidates: List[str], tools: dict[str, AgentTool]) -> Optional[str]:
+        if not candidates:
+            return None
+        
