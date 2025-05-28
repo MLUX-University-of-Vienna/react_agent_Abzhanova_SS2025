@@ -168,7 +168,7 @@ class TaskManager:
         while True:
             # Checking confidence
             if final_answer and final_confidence >= self.confidence_threshold:
-                thoughts.append("Confidence threshold met - terminating")
+                thoughts.append(f"Confidence threshold ({final_confidence:.2f}) met — terminating")
                 break
 
             # Determining available tools
