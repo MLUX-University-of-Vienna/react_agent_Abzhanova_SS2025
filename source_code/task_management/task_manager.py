@@ -193,6 +193,9 @@ class TaskManager:
             eval_ = self.evaluator.evaluate(query, result)
             thoughts.append(f"Evaluation: {eval_}")
 
+            answer = self.evaluator.generate_answer(query, result)
+            answer_conf = self.conf_assess.assess(answer)
+
             if not final_answer or answer_conf > final_confidence:
                 final_answer = answer
                 final_confidence = answer_conf
