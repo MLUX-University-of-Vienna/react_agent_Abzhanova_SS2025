@@ -13,4 +13,5 @@ class RegexPatternToolSelector(ToolSelectionStrategy):
                 for pattern in patterns:
                     if re.search(pattern, query, re.IGNORECASE):
                         candidates.append(name)
+                        break
         return candidates
