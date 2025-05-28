@@ -159,6 +159,7 @@ class TaskManager:
         tool_attempts = {t: 0 for t in self.tools.keys()}
         final_answer = None
         final_confidence = 0.0
+        previous_answer = None
 
         initial = self.generator.generate(query)
         thoughts.append(f"Initial Thought: {initial}")
