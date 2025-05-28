@@ -17,15 +17,19 @@ class RegexPatternToolSelector(ToolSelectionStrategy):
 
     def gather_candidates(self, query: str, tools: dict[str, AgentTool]) -> List[str]:
         candidates = []
+        logger.debug(f"Gathering candidates for query: '{query}'")
         for name, tool in tools.items():
             try:
                 patterns = tool.get_patterns()
                 for pattern in patterns:
                     if re.search(pattern, query, re.IGNORECASE):
                         candidates.append(name)
+                        logger.debug(f"Tool '{name}' matched pattern: '{pattern}'")
                         break
             except Exception as e:
-                continue            
+                logger.warning(f"Failed to get patterns for tool '{name}': {e}")
+                continue     
+        logger.debug(f"Regex-matched candidates: {candidates}")       
         return candidates
 
     def choose_tool(self, query: str, candidates: List[str], tools: dict[str, AgentTool]) -> Optional[str]:
