@@ -3,6 +3,7 @@ import logging
 from typing import Dict, Tuple, List
 
 from llm.ollama.ollama_interface import OllamaInterface
+from llm.gemma_interface import GemmaInterface
 from tool_management.tools.calculator_tool import CalculatorTool
 from tool_management.tools.serpapi_tool import SerpAPITool
 from tool_management.tools.wikipedia_tool import WikipediaTool
@@ -35,21 +36,15 @@ def run_test_case(agent: ReActAgent, query: str, expected_tool: str):
     print("=" * 80 + "\n")
 
 def main():
-    configure_logging()
 
-    # 1. Initialize the LLM
-    llm = OllamaInterface(model="deepseek-r1:8b", temperature=0.1)
+    llm = GemmaInterface(model="gemma3:1b", temperature=0.1)
 
-    # 2. Instantiate tools
     tools = create_tools()
 
-    # 3. Build the ReActAgent
     agent = ReActAgent(llm, tools)
-
-    # 4. Define & run your test cases
+    
     test_cases: List[Tuple[str, str]] = [
         ("Who is the president of the USA?", "web_search"),
-        # …add more as needed
     ]
 
     for query, expected in test_cases:
