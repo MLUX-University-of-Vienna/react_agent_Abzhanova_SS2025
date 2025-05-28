@@ -158,13 +158,15 @@ class TaskManager:
         thoughts, actions, observations, used_tools = [], [], [], []
         tool_attempts = {t: 0 for t in self.tools.keys()}
         final_answer = None
+        final_confidence = 0.0
 
         initial = self.generator.generate(query)
         thoughts.append(f"Initial Thought: {initial}")
 
         while True:
             # Checking confidence
-            if final_answer and self.conf_assess.assess(final_answer) >= self.confidence_threshold:
+            if final_answer and final_confidence >= self.confidence_threshold:
+                thoughts.append("Confidence threshold met - terminating")
                 break
 
             # Determining available tools
