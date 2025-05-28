@@ -1,6 +1,8 @@
 import re
 from llm.llm_interface import LLMInterface
-from typing import List, 
+from typing import List, Optional
+from tool_management.tools.agent_tool import AgentTool
+from tool_management.tool_selection.tool_selection_strategy import ToolSelectionStrategy
 
 class RegexPatternToolSelector(ToolSelectionStrategy):
     def __init__(self, llm: LLMInterface):
