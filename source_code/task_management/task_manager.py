@@ -130,13 +130,7 @@ class TaskManager:
         logger.info(f"\n=== Final LLM Output ===\n{final_answer}")
         logger.info(f"\n=== Thought Process ===\n{chr(10).join(thoughts)}")
 
-        return {
-            "final_answer": final_answer,
-            "thought_process": "\n".join(thoughts),
-            "actions_taken": "\n".join(actions),
-            "observations": "\n".join(observations),
-            "used_tools": used_tools
-        }
+        return {"final_answer": self._extract_final_answer(best_answer)}
     
     def _get_available_tools(self, tool_attempts):
         return [t for t, attempts in tool_attempts.items() if attempts < self.max_attempts_per_tool]
