@@ -112,8 +112,11 @@ class TaskManager:
             self.logger.info(f"Selected tool: {tool_name}")
             tool_attempts[tool_name] += 1
             result = self._get_tool_result(tool_name, query, tool_result_cache)
-            answer, confidence = self._evaluate_result(query, result)
             self.logger.debug(f"Tool result: {result}")
+
+            answer, confidence = self._evaluate_result(query, result)
+            self.logger.debug(f"Generated answer: {answer}")
+            self.logger.info(f"Confidence: {confidence:.2f}")
 
             if confidence == 0.0:
                 self.logger.debug("Low confidence, skipping this result")
