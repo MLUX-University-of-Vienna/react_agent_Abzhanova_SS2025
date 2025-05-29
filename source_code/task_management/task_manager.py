@@ -109,6 +109,7 @@ class TaskManager:
 
             tool_attempts[tool_name] += 1
             result = self._get_tool_result(tool_name, query, tool_result_cache)
+            answer, confidence = self._evaluate_result(query, result)
 
             if (tool_name, query) in tool_result_cache:
                 result = tool_result_cache[(tool_name, query)]
