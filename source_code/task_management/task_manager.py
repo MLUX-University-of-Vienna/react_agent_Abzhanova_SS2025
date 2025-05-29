@@ -124,9 +124,8 @@ class TaskManager:
                 self.logger.info("Confidence threshold met, stopping early")
                 break
 
-        if not final_answer:
-            final_answer = self.ans_gen.fallback(query)
-            thoughts.append("Fallback triggered after all logic paths")
+        if not best_answer:
+            best_answer = self.answer_generator.fallback(query)
 
         logger.info(f"\n=== Final LLM Output ===\n{final_answer}")
         logger.info(f"\n=== Thought Process ===\n{chr(10).join(thoughts)}")
