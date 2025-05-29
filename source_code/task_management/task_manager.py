@@ -91,6 +91,7 @@ class TaskManager:
 
     def run(self, query: str) -> Dict[str, object]:
         self.logger.info(f"Starting process for query: {query}")
+
         thoughts, actions, observations, used_tools = [], [], [], []
         tool_attempts = {t: 0 for t in self.tools.keys()}
         final_answer = None
@@ -176,3 +177,6 @@ class TaskManager:
             "observations": "\n".join(observations),
             "used_tools": used_tools
         }
+    
+    def _get_available_tools(self, tool_attempts):
+        return [t for t, attempts in tool_attempts.items() if attempts < self.max_attempts_per_tool]
