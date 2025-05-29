@@ -156,3 +156,8 @@ class TaskManager:
         answer = self.answer_generator.generate(query, result)
         confidence = self.confidence_assessor.assess(answer)
         return answer, confidence
+
+    def _extract_final_answer(self, answer: str) -> str:
+        if "<answer>" in answer:
+            return answer.split("<answer>")[-1].strip().rstrip("</answer>")
+        return answer.strip()
