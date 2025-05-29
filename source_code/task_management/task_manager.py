@@ -26,7 +26,7 @@ class AnswerGenerator:
     def __init__(self, llm: LLMInterface):
         self.llm = llm
 
-    def direct(self, query: str) -> str:
+    def generate(self, query: str, result: str) -> str:
         prompt = f'''Answer this question concisely:
 
 Question: {query}
