@@ -111,17 +111,6 @@ class TaskManager:
             result = self._get_tool_result(tool_name, query, tool_result_cache)
             answer, confidence = self._evaluate_result(query, result)
 
-            # Executing and evaluatng
-            actions.append(f"Used {tool_name}")
-            observations.append(result)
-            used_tools.append(tool_name)
-
-            eval_ = self.evaluator.evaluate(query, result)
-            thoughts.append(f"Evaluation: {eval_}")
-
-            answer = self.evaluator.generate_answer(query, result)
-            answer_conf = self.conf_assess.assess(answer)
-
             if previous_answer and answer.strip().lower() == previous_answer.strip().lower():
                 thoughts.append("Answer converged — same as previous, stopping")
                 break
