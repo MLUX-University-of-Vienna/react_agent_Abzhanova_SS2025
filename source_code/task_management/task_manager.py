@@ -176,3 +176,8 @@ class TaskManager:
         result = self.tool_executor.execute(tool_name, query)
         cache[(tool_name, query)] = result
         return result
+
+    def _evaluate_result(self, query: str, result: str):
+        answer = self.answer_generator.generate(query, result)
+        confidence = self.confidence_assessor.assess(answer)
+        return answer, confidence
