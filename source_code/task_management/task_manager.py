@@ -178,3 +178,7 @@ class TaskManager:
     
     def _get_available_tools(self, tool_attempts):
         return [t for t, attempts in tool_attempts.items() if attempts < self.max_attempts_per_tool]
+
+    def _select_tool(self, query: str):
+        candidates = self.selector.gather_candidates(query, self.tools)
+        return self.selector.choose_tool(query, candidates, self.tools)
