@@ -132,6 +132,7 @@ class TaskManager:
                 break
 
         if not best_answer:
+            self.logger.warning("No confident answer found. Using fallback.")
             best_answer = self.answer_generator.fallback(query)
 
         logger.info(f"\n=== Final LLM Output ===\n{final_answer}")
