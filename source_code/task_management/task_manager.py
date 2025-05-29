@@ -92,16 +92,10 @@ class TaskManager:
     def run(self, query: str) -> Dict[str, object]:
         self.logger.info(f"Starting process for query: {query}")
 
-        thoughts, actions, observations, used_tools = [], [], [], []
-        tool_attempts = {t: 0 for t in self.tools.keys()}
-        final_answer = None
-        final_confidence = 0.0
-        previous_answer = None
+        tool_attempts = {name: 0 for name in self.tools}
         tool_result_cache = {}
-        acceptable_confidence = 0.90
-
-        initial = self.generator.generate(query)
-        thoughts.append(f"Initial Thought: {initial}")
+        best_answer = None
+        best_confidence = 0.0
 
         while True:
             # Checking confidence
