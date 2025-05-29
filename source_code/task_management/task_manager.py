@@ -99,6 +99,7 @@ class TaskManager:
 
         while True:
             available_tools = self._get_available_tools(tool_attempts)
+             self.logger.debug(f"Available tools: {available_tools}")
             if not available_tools:
                 self.logger.info("No tools left, using fallback answer")
                 return {"final_answer": self.answer_generator.fallback(query)}
