@@ -78,17 +78,16 @@ class TaskManager:
         confidence_threshold: float = 0.85,
         max_attempts_per_tool: int = 2
     ):
-        self.logger = logging.getLogger(__name__)
-        self.generator = InitialThoughtGenerator(llm)
-        self.executor = ToolExecutor(tools)
-        self.evaluator = ResultEvaluator(llm)
-        self.ans_gen = AnswerGenerator(llm)
-        self.conf_assess = ConfidenceAssessor(llm)
-        self.stuck_det = StuckDetector(llm)
+        self.logger = logger
+        self.llm = llm
         self.tools = tools
         self.selector = selector
         self.confidence_threshold = confidence_threshold
         self.max_attempts_per_tool = max_attempts_per_tool
+
+        self.tool_executor = ToolExecutor(tools)
+        self.answer_generator = AnswerGenerator(llm)
+        self.confidence_assessor = ConfidenceAssessor(llm)
 
     def run(self, query: str) -> Dict[str, object]:
         self.logger.info(f"Starting process for query: {query}")
