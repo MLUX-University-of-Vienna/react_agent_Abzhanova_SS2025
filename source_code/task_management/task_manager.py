@@ -111,6 +111,11 @@ class TaskManager:
             result = self._get_tool_result(tool_name, query, tool_result_cache)
             answer, confidence = self._evaluate_result(query, result)
 
+            if confidence == 0.0:
+                self.logger.debug("Low confidence, skipping this result")
+                continue
+            
+
             if previous_answer and answer.strip().lower() == previous_answer.strip().lower():
                 thoughts.append("Answer converged — same as previous, stopping")
                 break
