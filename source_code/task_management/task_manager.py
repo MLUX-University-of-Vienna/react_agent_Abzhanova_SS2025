@@ -115,6 +115,10 @@ class TaskManager:
                 self.logger.debug("Low confidence, skipping this result")
                 continue
             
+            if confidence > best_confidence:
+                best_answer = answer
+                best_confidence = confidence
+                self.logger.info(f"Updated best answer with confidence {confidence:.2f}")
 
             if previous_answer and answer.strip().lower() == previous_answer.strip().lower():
                 thoughts.append("Answer converged — same as previous, stopping")
