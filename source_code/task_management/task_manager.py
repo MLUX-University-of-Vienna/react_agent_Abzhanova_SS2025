@@ -111,12 +111,6 @@ class TaskManager:
             result = self._get_tool_result(tool_name, query, tool_result_cache)
             answer, confidence = self._evaluate_result(query, result)
 
-            if (tool_name, query) in tool_result_cache:
-                result = tool_result_cache[(tool_name, query)]
-            else:
-                result = self.executor.execute(tool_name, query)
-                tool_result_cache[(tool_name, query)] = result
-
             # Executing and evaluatng
             actions.append(f"Used {tool_name}")
             observations.append(result)
