@@ -21,33 +21,6 @@ class ToolExecutor:
             return result.content if result.success else f"Tool error: {result.content}"
         return "Invalid tool"
 
-class ResultEvaluator:
-    def __init__(self, llm: LLMInterface):
-        self.llm = llm
-
-    def evaluate(self, query: str, result: str) -> str:
-        prompt = f'''Evaluate this tool result for the query:
-
-Query: {query}
-Result: {result}
-
-Assessment:''' 
-        output = self.llm.generate(prompt).strip()
-        logger.debug(f"ResultEvaluator.evaluate Output:\n{output}")
-        return output
-
-    def generate_answer(self, query: str, result: str) -> str:
-        prompt = f'''Based on this result, answer the query:
-
-Query: {query}
-Result: {result}
-
-Format:
-<think>analysis</think>
-Final Answer: <answer>'''
-        output = self.llm.generate(prompt).strip()
-        logger.debug(f"ResultEvaluator.generate_answer Output:\n{output}")
-        return output
 
 class AnswerGenerator:
     def __init__(self, llm: LLMInterface):
