@@ -107,19 +107,6 @@ class TaskManager:
             if not tool_name:
                 return {"clarification": self.selector.ask_clarification(query)}
 
-            
-
-            if final_answer and final_confidence >= self.confidence_threshold:
-                thoughts.append(f"Confidence threshold ({final_confidence:.2f}) met — terminating")
-                break
-
-            # Selecting tool via strategy
-            candidates = self.selector.gather_candidates(query, self.tools)
-            tool_name = self.selector.choose_tool(query, candidates, self.tools)
-            if not tool_name:
-                clarification = self.selector.ask_clarification(query)
-                return {"clarification": clarification}
-
             # Caching of tool results
             tool_attempts[tool_name] += 1
             if (tool_name, query) in tool_result_cache:
