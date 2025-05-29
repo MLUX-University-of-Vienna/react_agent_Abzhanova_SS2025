@@ -104,6 +104,10 @@ class TaskManager:
                 return {"final_answer": self.answer_generator.fallback(query)}
 
             tool_name = self._select_tool(query)
+            if not tool_name:
+                return {"clarification": self.selector.ask_clarification(query)}
+
+            
 
             if final_answer and final_confidence >= self.confidence_threshold:
                 thoughts.append(f"Confidence threshold ({final_confidence:.2f}) met — terminating")
