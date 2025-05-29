@@ -123,28 +123,6 @@ class TaskManager:
             if confidence >= self.confidence_threshold:
                 self.logger.info("Confidence threshold met, stopping early")
                 break
-    
-
-            if previous_answer and answer.strip().lower() == previous_answer.strip().lower():
-                thoughts.append("Answer converged — same as previous, stopping")
-                break
-            previous_answer = answer
-
-            if not final_answer or answer_conf > final_confidence:
-                final_answer = answer
-                final_confidence = answer_conf
-                thoughts.append(f"Promoted better answer with confidence {answer_conf:.2f}")
-            
-            if answer_conf >= acceptable_confidence:
-                thoughts.append("High confidence (>= 0.90) — exiting immediately")
-                break
-            elif answer_conf >= self.confidence_threshold:
-                thoughts.append(f"Confidence ({answer_conf:.2f}) above threshold — exiting")
-                break
-            
-            if self.stuck_det.is_stuck(thoughts, actions):
-                thoughts.append("Detected diminishing returns - terminating")
-                break
 
         if not final_answer:
             final_answer = self.ans_gen.fallback(query)
