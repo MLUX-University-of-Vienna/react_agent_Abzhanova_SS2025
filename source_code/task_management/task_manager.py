@@ -107,8 +107,9 @@ class TaskManager:
             if not tool_name:
                 return {"clarification": self.selector.ask_clarification(query)}
 
-            # Caching of tool results
             tool_attempts[tool_name] += 1
+            result = self._get_tool_result(tool_name, query, tool_result_cache)
+
             if (tool_name, query) in tool_result_cache:
                 result = tool_result_cache[(tool_name, query)]
             else:
