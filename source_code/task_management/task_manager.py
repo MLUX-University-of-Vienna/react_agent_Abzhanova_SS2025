@@ -113,13 +113,6 @@ class TaskManager:
                 thoughts.append(f"Confidence threshold ({final_confidence:.2f}) met — terminating")
                 break
 
-            # Determining available tools
-            available = [t for t, count in tool_attempts.items() if count < self.max_attempts_per_tool]
-            if not available and not final_answer:
-                final_answer = self.ans_gen.fallback(query)
-                thoughts.append("No tools left, using fallback answer")
-                break
-
             # Selecting tool via strategy
             candidates = self.selector.gather_candidates(query, self.tools)
             tool_name = self.selector.choose_tool(query, candidates, self.tools)
