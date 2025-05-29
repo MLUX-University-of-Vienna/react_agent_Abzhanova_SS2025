@@ -69,27 +69,6 @@ Respond only with the confidence score (0.0-1.0):'''
         except:
             return 0.5
 
-class StuckDetector:
-    def __init__(self, llm: LLMInterface):
-        self.llm = llm
-
-    def measure_similarity(self, t1: str, t2: str) -> float:
-        w1, w2 = set(t1.lower().split()), set(t2.lower().split())
-        inter = w1 & w2
-        union = w1 | w2
-        return len(inter) / len(union) if union else 0.0
-
-    def is_stuck(self, thoughts: List[str], actions: List[str]) -> bool:
-        if len(actions) < 2:
-            return False
-        last_actions = [a.split(':')[0] for a in actions[-2:]]
-        if len(set(last_actions)) == 1:
-            return True
-        last_thoughts = thoughts[-2:]
-        if len(last_thoughts[0]) > 50 and len(last_thoughts[1]) > 50:
-            return self.measure_similarity(last_thoughts[0], last_thoughts[1]) > 0.8
-        return False
-
 class TaskManager:
     def __init__(
         self,
