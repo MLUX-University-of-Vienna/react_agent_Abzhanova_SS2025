@@ -106,6 +106,7 @@ class TaskManager:
 
             tool_name = self._select_tool(query)
             if not tool_name:
+                self.logger.info("Tool selection failed. Asking for clarification.")
                 return {"clarification": self.selector.ask_clarification(query)}
 
             tool_attempts[tool_name] += 1
