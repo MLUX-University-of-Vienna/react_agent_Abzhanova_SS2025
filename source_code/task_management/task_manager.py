@@ -120,6 +120,11 @@ class TaskManager:
                 best_confidence = confidence
                 self.logger.info(f"Updated best answer with confidence {confidence:.2f}")
 
+            if confidence >= self.confidence_threshold:
+                self.logger.info("Confidence threshold met, stopping early")
+                break
+    
+
             if previous_answer and answer.strip().lower() == previous_answer.strip().lower():
                 thoughts.append("Answer converged — same as previous, stopping")
                 break
