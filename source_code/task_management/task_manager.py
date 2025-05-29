@@ -50,8 +50,6 @@ class ConfidenceAssessor:
         self.llm = llm
 
     def assess(self, answer: str) -> float:
-        if "Final Answer:" not in answer:
-            return 0.0
         prompt = f'''Rate the confidence (0-1) in this answer's accuracy:
 
 {answer}
@@ -99,7 +97,7 @@ class TaskManager:
 
         while True:
             available_tools = self._get_available_tools(tool_attempts)
-             self.logger.debug(f"Available tools: {available_tools}")
+            self.logger.debug(f"Available tools: {available_tools}")
             if not available_tools:
                 self.logger.info("No tools left, using fallback answer")
                 return {"final_answer": self.answer_generator.fallback(query)}
@@ -135,7 +133,6 @@ class TaskManager:
             self.logger.warning("No confident answer found. Using fallback.")
             best_answer = self.answer_generator.fallback(query)
 
-        logger.info(f"\n=== Final LLM Output ===\n{final_answer}")
         return {"final_answer": self._extract_final_answer(best_answer)}
     
     def _get_available_tools(self, tool_attempts):
