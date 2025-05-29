@@ -98,7 +98,11 @@ class TaskManager:
         best_confidence = 0.0
 
         while True:
-            # Checking confidence
+            available_tools = self._get_available_tools(tool_attempts)
+            if not available_tools:
+                self.logger.info("No tools left, using fallback answer")
+                return {"final_answer": self.answer_generator.fallback(query)}
+
             if final_answer and final_confidence >= self.confidence_threshold:
                 thoughts.append(f"Confidence threshold ({final_confidence:.2f}) met — terminating")
                 break
