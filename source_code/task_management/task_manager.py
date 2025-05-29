@@ -27,11 +27,13 @@ class AnswerGenerator:
         self.llm = llm
 
     def generate(self, query: str, result: str) -> str:
-        prompt = f'''Answer this question concisely:
+        prompt = f"""Based on this result, answer the query:
 
-Question: {query}
+Query: {query}
+Result: {result}
 
-Answer:''' 
+Format:
+Final Answer: <your answer here>"""
         return self.llm.generate(prompt).strip()
 
     def fallback(self, query: str) -> str:
