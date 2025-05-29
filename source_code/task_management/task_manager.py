@@ -128,8 +128,6 @@ class TaskManager:
             best_answer = self.answer_generator.fallback(query)
 
         logger.info(f"\n=== Final LLM Output ===\n{final_answer}")
-        logger.info(f"\n=== Thought Process ===\n{chr(10).join(thoughts)}")
-
         return {"final_answer": self._extract_final_answer(best_answer)}
     
     def _get_available_tools(self, tool_attempts):
