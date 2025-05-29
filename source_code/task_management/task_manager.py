@@ -119,7 +119,7 @@ class TaskManager:
             self.logger.info(f"Confidence: {confidence:.2f}")
 
             if confidence == 0.0:
-                self.logger.debug("Low confidence, skipping this result")
+                self.logger.warning("Low confidence, skipping this result")
                 continue
             
             if confidence > best_confidence:
