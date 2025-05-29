@@ -37,14 +37,13 @@ Final Answer: <your answer here>"""
         return self.llm.generate(prompt).strip()
 
     def fallback(self, query: str) -> str:
-        prompt = f'''After careful consideration:
+        prompt = f"""Unable to get a confident answer via tools.
+Please answer this directly:
 
 Question: {query}
 
-Response:''' 
-        output = self.llm.generate(prompt).strip()
-        logger.debug(f"AnswerGenerator.direct Output:\n{output}")
-        return output
+Final Answer:"""
+        return self.llm.generate(prompt).strip()
 
 class ConfidenceAssessor:
     def __init__(self, llm: LLMInterface):
