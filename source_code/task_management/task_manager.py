@@ -168,3 +168,10 @@ class TaskManager:
     def _select_tool(self, query: str):
         candidates = self.selector.gather_candidates(query, self.tools)
         return self.selector.choose_tool(query, candidates, self.tools)
+
+    def _get_tool_result(self, tool_name: str, query: str, cache: dict):
+        if (tool_name, query) in cache:
+            return cache[(tool_name, query)]
+        result = self.tool_executor.execute(tool_name, query)
+        cache[(tool_name, query)] = result
+        return result
