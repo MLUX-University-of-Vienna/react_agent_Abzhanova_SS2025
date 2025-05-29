@@ -11,22 +11,6 @@ handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 logger.addHandler(handler)
 
-class InitialThoughtGenerator:
-    def __init__(self, llm: LLMInterface):
-        self.llm = llm
-
-    def generate(self, query: str) -> str:
-        prompt = f'''Analyze this question and decide if it requires external tools:
-
-Question: {query}
-
-Response format:
-THOUGHT: <analysis>
-NEEDS_TOOL: <yes|no>'''
-        output = self.llm.generate(prompt).strip()
-        logger.debug(f"InitialThoughtGenerator Output:\n{output}")
-        return output
-
 class ToolExecutor:
     def __init__(self, tools: Dict[str, AgentTool]):
         self.tools = tools
