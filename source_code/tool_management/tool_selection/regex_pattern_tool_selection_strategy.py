@@ -41,7 +41,6 @@ class RegexPatternToolSelector(ToolSelectionStrategy):
         
         all_tool_names = list(tools.keys())
         choice = self._ask_llm_to_choose(query, all_tool_names, tools)
-        choice = choice.lower()
         return choice if choice in all_tool_names else None
         
         
@@ -57,7 +56,7 @@ Query: "{query}"
 Candidate tools:
 {tool_descriptions}
 
-Which tool is best suited for this query? Respond with ONLY the tool name."""
+Which tool is best suited for this query? Respond with ONLY the tool name from:{tool_descriptions}"""
         
         choice = self.llm.generate(prompt).strip()
         logger.info(f"LLM selected tool: '{choice}'")
