@@ -22,14 +22,21 @@ class ReActAgent:
         self.llm = llm
 
     def handle(self, query: str) -> str:
+        logger.info(f"Received query: {query}")
+
         # 1) It's separating into subqueries
         subqs = self.separator.separate(query)
+        logger.debug(f"Separated into {len(subqs)} subquery(ies): {subqs}")
+
         # 2) Answering each in turn
         parts = []
         for sq in subqs:
+            logger.info(f"Handling subquery: {sq}")
             result = self.task_manager.run(sq)
             parts.append({"question": sq, "answer": result["final_answer"]})
+            logger.debug(f"Subquery result: {result['final_answer']}")
 
+        logger.info("Aggregating subquery answers into final response.")
         agg_prompt = "SYSTEM: You are an expert summarizer.\n\n"
         agg_prompt += "I asked these sub-questions and got these answers:\n\n"
         for p in parts:
@@ -40,4 +47,5 @@ class ReActAgent:
         )
 
         final = self.llm.generate(agg_prompt)
+        logger.info(f"Final aggregated answer: {final}")
         return final.strip()
