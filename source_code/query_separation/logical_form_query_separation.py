@@ -35,8 +35,8 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
             f"User query: '{query}'"
             "Return only the DSL string:"
         )
-        self.logger.debug("Separation prompt:%s", prompt)
-        logic = self.llm.generate(prompt).strip()
+        self.logger.debug("Separation prompt:%s", dsl_prompt)
+        logic = self.llm.generate(dsl_prompt).strip()
         self.logger.debug("Received logic DSL: %s", logic)
 
         # 2) Split into segments
