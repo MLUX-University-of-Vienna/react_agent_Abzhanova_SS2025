@@ -54,6 +54,9 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
             f"DSL: {' ∧ '.join(segments)}"
         )
 
+        self.logger.debug("Rephrasing prompt: %s", rephrase_prompt)
+        
+
         subqueries: List[str] = []
         for seg in segments:
             # Expect format: field(entity)
