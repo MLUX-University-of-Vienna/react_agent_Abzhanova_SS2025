@@ -52,3 +52,22 @@ class ReActAgent:
         subqs = self.separator.separate(query)
         logger.debug(f"Separated into {len(subqs)} subquery(ies): {subqs}")
         return subqs
+
+    def _answer_subqueries(self, subqueries: List[str]) -> List[Dict[str, str]]:
+        results = []
+        for sq in subqueries:
+            logger.info(f"Handling subquery: {sq}")
+            result = self.task_manager.run(sq)
+
+            if "final_answer" in result:
+                answer = result["final_answer"]
+                logger.debug(f"Subquery result: {answer}")
+            elif "clarification" in result:
+                answer = f"[Needs clarification] {result['clarification']}"
+                logger.warning(f"Subquery clarification required: {answer}")
+            else:
+                answer = "[No answer produced]"
+                logger.error("Unexpected result structure from task manager.")
+
+            results.append({"question": sq, "answer": answer})
+        return results
