@@ -59,21 +59,4 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
         subqueries = [q.strip() for q in subqueries if q.strip()]
         self.logger.debug("Final subqueries: %s", subqueries)
 
-
-        subqueries: List[str] = []
-        for seg in segments:
-            # Expect format: field(entity)
-            if '(' in seg and seg.endswith(')'):
-                field, rest = seg.split('(', 1)
-                entity = rest[:-1]  # drop trailing ')'
-                human_field = field.replace('_', ' ').strip()
-                human_entity = entity.strip()
-                subqueries.append(f"What is the {human_field} of {human_entity}?" )
-            else:
-                self.logger.warning("Unparsable DSL segment: %s", seg)
-
-        if not subqueries:
-            self.logger.info("Falling back to simple punctuation split.")
-            return [part.strip() for part in re.split(r'[,.] ', query) if part.strip()]
-
         return subqueries
