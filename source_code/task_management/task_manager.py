@@ -73,7 +73,7 @@ class TaskManager:
         llm: LLMInterface,
         tools: Dict[str, AgentTool],
         selector: ToolSelectionStrategy,
-        confidence_threshold: float = 0.85,
+        confidence_threshold: float = 0.80,
         max_attempts_per_tool: int = 2
     ):
         self.logger = logger
@@ -95,7 +95,7 @@ class TaskManager:
         best_answer = None
         best_confidence = 0.0
 
-        while True:
+        while best_confidence < self.confidence_threshold:
             available_tools = self._get_available_tools(tool_attempts)
             self.logger.debug(f"Available tools: {available_tools}")
             if not available_tools:
