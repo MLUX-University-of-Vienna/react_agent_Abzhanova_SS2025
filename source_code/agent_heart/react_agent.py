@@ -64,3 +64,15 @@ class ReActAgent:
 
             results.append({"question": sq, "answer": answer})
         return results
+
+    def _aggregate_answers(self, original_query: str, parts: List[Dict[str, str]]) -> str:
+        logger.info("Aggregating subquery answers into final response.")
+        agg_prompt = "SYSTEM: You are an expert summarizer.\n\n"
+        agg_prompt += "I asked these sub-questions and got these answers:\n\n"
+        for p in parts:
+            agg_prompt += f"- Q: {p['question']}\n  A: {p['answer']}\n\n"
+        agg_prompt += (
+            "Please combine these into a single, coherent final response to the original query:\n"
+            f"\"{original_query}\"\n\nAnswer:"
+        )
+        return self.llm.generate(agg_prompt).strip()
