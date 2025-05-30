@@ -41,10 +41,18 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
 
         # 2) Split into segments
         segments = [seg.strip() for seg in logic.split('∧') if seg.strip()]
-        
+
         if not segments:
             self.logger.warning("No valid DSL segments found; falling back to punctuation-based splitting.")
             return [part.strip() for part in re.split(r'[,.]', query) if part.strip()]
+
+        rephrase_prompt = (
+            "SYSTEM: You are a helpful assistant.\n"
+            "Convert the following DSL expressions into clear natural-language sub-questions.\n"
+            "Each DSL is in the format: field(entity)\n"
+            "Respond with one question per line.\n"
+            f"DSL: {' ∧ '.join(segments)}"
+        )
 
         subqueries: List[str] = []
         for seg in segments:
