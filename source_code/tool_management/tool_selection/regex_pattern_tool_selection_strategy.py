@@ -40,7 +40,8 @@ class RegexPatternToolSelector(ToolSelectionStrategy):
             return self._ask_llm_to_choose(query, candidates, tools)
         
         all_tool_names = list(tools.keys())
-        return self._ask_llm_to_choose(query, all_tool_names, tools)
+        choice = self._ask_llm_to_choose(query, all_tool_names, tools)
+        return choice if choice in all_tool_names else None
         
         
     def _ask_llm_to_choose(self, query: str, candidates: List[str], tools: dict[str, AgentTool]) -> Optional[str]:
