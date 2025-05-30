@@ -25,14 +25,7 @@ class ReActAgent:
     def handle(self, query: str) -> str:
         logger.info(f"Received query: {query}")
         subqueries = self._separate_query(query)
-
-        # 2) Answering each in turn
-        parts = []
-        for sq in subqs:
-            logger.info(f"Handling subquery: {sq}")
-            result = self.task_manager.run(sq)
-            parts.append({"question": sq, "answer": result["final_answer"]})
-            logger.debug(f"Subquery result: {result['final_answer']}")
+        results = self._answer_subqueries(subqueries)
 
         logger.info("Aggregating subquery answers into final response.")
         agg_prompt = "SYSTEM: You are an expert summarizer.\n\n"
