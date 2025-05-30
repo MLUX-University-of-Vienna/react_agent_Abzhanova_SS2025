@@ -11,7 +11,7 @@ class SerpAPITool(AgentTool):
 
     @property
     def name(self) -> str:
-        return "web_search"
+        return "google_search"
 
     @property
     def description(self) -> str:
