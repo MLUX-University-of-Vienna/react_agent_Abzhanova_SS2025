@@ -50,3 +50,8 @@ class ReActAgent:
         final = self.llm.generate(agg_prompt)
         logger.info(f"Final aggregated answer: {final}")
         return final.strip()
+
+    def _separate_query(self, query: str) -> List[str]:
+        subqs = self.separator.separate(query)
+        logger.debug(f"Separated into {len(subqs)} subquery(ies): {subqs}")
+        return subqs
