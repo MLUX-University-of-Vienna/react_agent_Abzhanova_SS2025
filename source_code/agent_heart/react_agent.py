@@ -24,10 +24,7 @@ class ReActAgent:
 
     def handle(self, query: str) -> str:
         logger.info(f"Received query: {query}")
-
-        # 1) It's separating into subqueries
-        subqs = self.separator.separate(query)
-        logger.debug(f"Separated into {len(subqs)} subquery(ies): {subqs}")
+        subqueries = self._separate_query(query)
 
         # 2) Answering each in turn
         parts = []
