@@ -26,20 +26,9 @@ class ReActAgent:
         logger.info(f"Received query: {query}")
         subqueries = self._separate_query(query)
         results = self._answer_subqueries(subqueries)
-
-        logger.info("Aggregating subquery answers into final response.")
-        agg_prompt = "SYSTEM: You are an expert summarizer.\n\n"
-        agg_prompt += "I asked these sub-questions and got these answers:\n\n"
-        for p in parts:
-            agg_prompt += f"- Q: {p['question']}\n  A: {p['answer']}\n\n"
-        agg_prompt += (
-            "Please combine these into a single, coherent final response to the original query:\n"
-            f"\"{query}\"\n\nAnswer:"
-        )
-
-        final = self.llm.generate(agg_prompt)
+        final_answer = self._aggregate_answers(query, results)
         logger.info(f"Final aggregated answer: {final}")
-        return final.strip()
+        return final_answer
 
     def _separate_query(self, query: str) -> List[str]:
         subqs = self.separator.separate(query)
