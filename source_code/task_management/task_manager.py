@@ -87,8 +87,6 @@ class TaskManager:
         self.answer_generator = AnswerGenerator(llm)
         self.confidence_assessor = ConfidenceAssessor(llm)
 
-        used_tools = set()
-
     def run(self, query: str) -> Dict[str, object]:
         self.logger.info(f"Starting process for query: {query}")
 
