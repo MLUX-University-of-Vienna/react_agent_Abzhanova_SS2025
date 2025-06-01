@@ -87,6 +87,8 @@ class TaskManager:
         self.answer_generator = AnswerGenerator(llm)
         self.confidence_assessor = ConfidenceAssessor(llm)
 
+        used_tools = set()
+
     def run(self, query: str) -> Dict[str, object]:
         self.logger.info(f"Starting process for query: {query}")
 
@@ -98,6 +100,7 @@ class TaskManager:
         while best_confidence < self.confidence_threshold:
             available_tools = self._get_available_tools(tool_attempts)
             self.logger.debug(f"Available tools: {available_tools}")
+            
             if not available_tools:
                 self.logger.info("No tools left, using fallback answer")
                 return {"final_answer": self.answer_generator.fallback(query)}

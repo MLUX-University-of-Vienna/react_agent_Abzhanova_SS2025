@@ -42,9 +42,9 @@ def main():
     tools = create_tools()
 
     agent = ReActAgent(llm, tools)
-    
+
     test_cases: List[Tuple[str, str]] = [
-        ("Who is the president of the USA?", "web_search"),
+        ("What is name of the president of the USA?", "web_search"),
     ]
 
     for query, expected in test_cases:
