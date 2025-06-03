@@ -11,6 +11,12 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
     Splits a complex query by having the LLM emit a minimal 'field(entity) ∧ ...' DSL,
     then converts each field-entity pair into a natural-language subtask.
     """
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG) 
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
+    logger.addHandler(handler)
+
     def __init__(self, llm: LLMInterface):
         self.llm = llm
         self.logger = logging.getLogger(__name__)
@@ -43,7 +49,6 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
             f"DSL: {logic}\n"
             "Questions:"
         )
-
 
         self.logger.debug("Rephrasing prompt: %s", rephrase_prompt)
         subqueries = self.llm.generate(rephrase_prompt).strip().splitlines()
