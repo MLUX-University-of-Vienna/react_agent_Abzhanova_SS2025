@@ -19,7 +19,6 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
 
     def __init__(self, llm: LLMInterface):
         self.llm = llm
-        self.logger = logging.getLogger(__name__)
 
     def separate(self, query: str) -> List[str]:
         # 1) Prompting LLM to produce minimal DSL
@@ -28,9 +27,10 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
             "- Use field(entity) expressions, joined by logical operators: ∧ (and), ∨ (or), ¬ (not)\n"
             "- Be strict: only represent what is explicitly asked.\n"
             "- Do not infer or expand the question.\n"
-            "- Resolve pronouns to their referent.\n"
+            "- Resolve **all** pronouns (e.g., he, she, it, they) to their **full referents**.\n"
+            "- Ensure the DSL is self-contained and unambiguous.\n"
             f"User query: '{query}'\n"
-            "Do not include any formatting like bullets, asterisks, markdown, or explanations, just DSL:"
+            "Output only DSL expressions — no bullets, markdown, or explanation:"
         )
 
         self.logger.debug("Separation prompt:%s", dsl_prompt)
