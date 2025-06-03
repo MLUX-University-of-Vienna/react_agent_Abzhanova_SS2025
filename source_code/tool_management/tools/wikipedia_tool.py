@@ -65,8 +65,10 @@ class WikipediaTool(AgentTool):
             page_title = results[0]
             page = wikipedia.page(page_title)  
             summary_text = page.summary
+            
+            if len(summary_text) > 500:
+                summary_text = summary_text[:500] + "..."
 
-            self.logger.warning(f"No page exists for '{term}' even after search")
             return ToolResponse(content=f"No Wikipedia info found for '{term}'", success=False)
 
         except Exception as e:
