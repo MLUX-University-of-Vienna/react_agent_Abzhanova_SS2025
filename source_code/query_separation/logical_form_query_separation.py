@@ -42,6 +42,9 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
             self.logger.warning("Empty DSL output from LLM.")
             return [query]
 
+        if re.search(r'\b(he|she|they|it|his|her|their)\b', logic, re.IGNORECASE):
+            self.logger.warning("DSL may contain unresolved pronouns: %s", logic)
+
         rephrase_prompt = (
             "SYSTEM: Convert each logical expression of the form field(entity) into a clear and minimal natural-language question.\n"
             f"DSL: {logic}\n"
