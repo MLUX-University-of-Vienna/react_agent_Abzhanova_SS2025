@@ -49,8 +49,6 @@ class WikipediaTool(AgentTool):
     def execute(self, query: str) -> ToolResponse:
         try:
             self.logger.info(f"Starting Wikipedia search for query: {query}")
-            term = self._extract_search_term(query)
-            self.logger.info(f"Processed Wikipedia search term: {term}")
 
             page = self.wiki_api.page(term)
             if not page.exists():
