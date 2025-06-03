@@ -51,10 +51,13 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
             return [part.strip() for part in re.split(r'[,.]', query) if part.strip()]
 
         dsl_block = "\n".join(segments)
-        
+
         rephrase_prompt = (
-            "SYSTEM: Convert each logical expression of the form field(entity) into a clear and minimal natural-language question.\n"
-            f"DSL: {logic}\n"
+            "SYSTEM: For each logical field(entity) pair, generate a clear, minimal natural-language question.\n"
+            "- Each line in the DSL corresponds to one question.\n"
+            "- Do not combine or merge them.\n"
+            "- Keep output simple: one question per line, no numbering or formatting.\n"
+            f"DSL:\n{dsl_block}\n"
             "Questions:"
         )
 
