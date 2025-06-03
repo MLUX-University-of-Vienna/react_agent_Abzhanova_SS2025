@@ -1,7 +1,7 @@
 import json
 import logging
 import re
-from typing import List, Dict
+from typing import List
 
 from llm.llm_interface import LLMInterface
 from .query_separation_strategy import QuerySeparationStrategy
