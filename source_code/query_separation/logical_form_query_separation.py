@@ -50,7 +50,8 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
             self.logger.warning("No valid DSL segments found; falling back to punctuation-based splitting.")
             return [part.strip() for part in re.split(r'[,.]', query) if part.strip()]
 
-
+        dsl_block = "\n".join(segments)
+        
         rephrase_prompt = (
             "SYSTEM: Convert each logical expression of the form field(entity) into a clear and minimal natural-language question.\n"
             f"DSL: {logic}\n"
