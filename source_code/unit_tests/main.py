@@ -44,7 +44,7 @@ def main():
     agent = ReActAgent(llm, tools)
 
     test_cases: List[Tuple[str, str]] = [
-        ("What is name of the president of the USA, how old is he?", "web_search"),
+        ("What is name of the president of the USA and how old is he?", "web_search"),
     ]
 
     for query, expected in test_cases:

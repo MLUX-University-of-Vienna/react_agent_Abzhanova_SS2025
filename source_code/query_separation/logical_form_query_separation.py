@@ -6,13 +6,6 @@ from typing import List, Dict
 from llm.llm_interface import LLMInterface
 from .query_separation_strategy import QuerySeparationStrategy
 
-import json
-import logging
-from typing import List, Dict
-
-from llm.llm_interface import LLMInterface
-from query_separation.query_separation_strategy import QuerySeparationStrategy
-
 class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
     """
     Splits a complex query by having the LLM emit a minimal 'field(entity) ∧ ...' DSL,
@@ -31,10 +24,8 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
             "- Do not infer or expand the question.\n"
             "- Resolve pronouns to their referent.\n"
             f"User query: '{query}'\n"
-            "DSL:"
-        )   
-
-
+            "Do not include any formatting like bullets, asterisks, markdown, or explanations, just DSL:"
+        )
 
         self.logger.debug("Separation prompt:%s", dsl_prompt)
         logic = self.llm.generate(dsl_prompt).strip()
@@ -49,7 +40,6 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
 
         rephrase_prompt = (
             "SYSTEM: Convert each logical expression of the form field(entity) into a clear and minimal natural-language question.\n"
-            "Each line must correspond to one field(entity) pair.\n"
             f"DSL: {logic}\n"
             "Questions:"
         )
