@@ -47,19 +47,12 @@ class WikipediaTool(AgentTool):
 }"""
 
     def execute(self, query: str) -> ToolResponse:
-        try:
-            self.logger.info(f"Starting Wikipedia search for query: {query}")
+        self.logger.info(f"Starting Wikipedia search for query: {query}")
 
-            page = self.wiki_api.page(term)
-            if not page.exists():
-                self.logger.info(f"Page not found, searching via wikipedia.search() for: {term}")
-                results = wikipedia.search(term)
-                if not results:
-                    self.logger.warning(f"No search results for '{term}'")
-                    return ToolResponse(content=f"No Wikipedia info found for '{term}'", success=False)
-                term = results[0]
-                self.logger.info(f"Using top search result: {term}")
-                page = self.wiki_api.page(term)
+        try:
+            search_term = query 
+            if not search_term or not search_term.strip():
+                return ToolResult(success=False, data="", error="No query provided.")
 
             if page.exists():
                 summary = page.summary or page.text.split('\n')[0]
