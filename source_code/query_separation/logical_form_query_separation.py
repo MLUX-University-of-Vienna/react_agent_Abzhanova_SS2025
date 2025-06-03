@@ -45,6 +45,12 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
         if re.search(r'\b(he|she|they|it|his|her|their)\b', logic, re.IGNORECASE):
             self.logger.warning("DSL may contain unresolved pronouns: %s", logic)
 
+        segments = [seg.strip() for seg in logic.split('∧') if seg.strip()]
+        if not segments:
+            self.logger.warning("No valid DSL segments found; falling back to punctuation-based splitting.")
+            return [part.strip() for part in re.split(r'[,.]', query) if part.strip()]
+
+
         rephrase_prompt = (
             "SYSTEM: Convert each logical expression of the form field(entity) into a clear and minimal natural-language question.\n"
             f"DSL: {logic}\n"
