@@ -54,6 +54,13 @@ class WikipediaTool(AgentTool):
             if not search_term or not search_term.strip():
                 return ToolResult(success=False, data="", error="No query provided.")
 
+            results = wikipedia.search(search_term)
+            if not results:
+                return ToolResult(
+                    success=True,
+                    data=f"No Wikipedia articles found for '{search_term}'."
+                )
+                
             if page.exists():
                 summary = page.summary or page.text.split('\n')[0]
                 summary = re.sub(r'\[\d+\]', '', summary)[:self.max_summary_length].strip()
