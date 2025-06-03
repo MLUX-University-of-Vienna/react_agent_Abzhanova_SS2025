@@ -51,6 +51,7 @@ class WikipediaTool(AgentTool):
 
         try:
             search_term = query 
+
             if not search_term or not search_term.strip():
                 return ToolResult(success=False, data="", error="No query provided.")
 
@@ -60,13 +61,10 @@ class WikipediaTool(AgentTool):
                     success=True,
                     data=f"No Wikipedia articles found for '{search_term}'."
                 )
-                
-            if page.exists():
-                summary = page.summary or page.text.split('\n')[0]
-                summary = re.sub(r'\[\d+\]', '', summary)[:self.max_summary_length].strip()
-                url = page.fullurl
-                self.logger.info(f"Fetched summary for: {term}")
-                return ToolResponse(content=f"{summary}\n\nSource: {url}", success=True)
+
+            page_title = results[0]
+            page = wikipedia.page(page_title)  
+            summary_text = page.summary
 
             self.logger.warning(f"No page exists for '{term}' even after search")
             return ToolResponse(content=f"No Wikipedia info found for '{term}'", success=False)
