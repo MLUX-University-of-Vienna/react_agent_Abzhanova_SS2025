@@ -69,7 +69,8 @@ class WikipediaTool(AgentTool):
             if len(summary_text) > 500:
                 summary_text = summary_text[:500] + "..."
 
-            return ToolResponse(content=f"No Wikipedia info found for '{term}'", success=False)
+            result_data = f"Title: {page.title}\nSummary: {summary_text}"
+            return ToolResult(success=True, data=result_data)
 
         except Exception as e:
             self.logger.error(f"Wikipedia search failed: {e}")
