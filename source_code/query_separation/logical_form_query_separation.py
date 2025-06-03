@@ -37,10 +37,10 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
 
         logic = self.llm.generate(dsl_prompt).strip()
         self.logger.debug("Received logic DSL: %s", logic)
-        
-        if not segments:
-            self.logger.warning("No valid DSL segments found; falling back to punctuation-based splitting.")
-            return [part.strip() for part in re.split(r'[,.]', query) if part.strip()]
+
+        if not logic:
+            self.logger.warning("Empty DSL output from LLM.")
+            return [query]
 
         rephrase_prompt = (
             "SYSTEM: Convert each logical expression of the form field(entity) into a clear and minimal natural-language question.\n"
