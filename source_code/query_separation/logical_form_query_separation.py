@@ -34,12 +34,10 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
         )
 
         self.logger.debug("Separation prompt:%s", dsl_prompt)
+
         logic = self.llm.generate(dsl_prompt).strip()
         self.logger.debug("Received logic DSL: %s", logic)
-
-        # 2) Split into segments
-        segments = [seg.strip() for seg in logic.split('∧') if seg.strip()]
-
+        
         if not segments:
             self.logger.warning("No valid DSL segments found; falling back to punctuation-based splitting.")
             return [part.strip() for part in re.split(r'[,.]', query) if part.strip()]
