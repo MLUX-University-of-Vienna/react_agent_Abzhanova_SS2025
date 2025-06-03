@@ -62,8 +62,13 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
         )
 
         self.logger.debug("Rephrasing prompt: %s", rephrase_prompt)
+
         subqueries = self.llm.generate(rephrase_prompt).strip().splitlines()
         subqueries = [q.strip() for q in subqueries if q.strip()]
         self.logger.debug("Final subqueries: %s", subqueries)
+
+        if not subqueries:
+            self.logger.warning("No subqueries were generated; falling back to full query.")
+            return [query]
 
         return subqueries
