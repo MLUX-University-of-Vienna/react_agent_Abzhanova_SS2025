@@ -47,12 +47,12 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
             return [part.strip() for part in re.split(r'[,.]', query) if part.strip()]
 
         rephrase_prompt = (
-            "SYSTEM: You are a helpful assistant.\n"
-            "Convert the following DSL expressions into clear natural-language sub-questions.\n"
-            "Each DSL is in the format: field(entity)\n"
-            "Respond with one question per line.\n"
-            f"DSL: {' ∧ '.join(segments)}"
+            "SYSTEM: Convert each logical expression of the form field(entity) into a clear and minimal natural-language question.\n"
+            "Each line must correspond to one field(entity) pair.\n"
+            f"DSL: {logic}\n"
+            "Questions:"
         )
+
 
         self.logger.debug("Rephrasing prompt: %s", rephrase_prompt)
         subqueries = self.llm.generate(rephrase_prompt).strip().splitlines()
