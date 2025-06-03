@@ -46,32 +46,15 @@ class WikipediaTool(AgentTool):
   "final_answer": ""
 }"""
 
-    def _extract_search_term(self, query: str) -> str:
-        q = re.sub(r'^(who|what|when|where|why|how)\s+', '', query, flags=re.IGNORECASE)
-        q = re.sub(r'[?.,;!]', '', q).strip()
-        for pattern, repl in [
-            (r'invented (.*)', r'\1'),
-            (r'explain (.*)', r'\1'),
-            (r'current (.*) of (.*)', r'\2 \1'),
-            (r'capital of (.*)', r'\1')
-        ]:
-            if re.search(pattern, q, re.IGNORECASE):
-                self.logger.debug(f"Reformatted search term using pattern: {pattern}")
-                return re.sub(pattern, repl, q, flags=re.IGNORECASE).title()
-        self.logger.debug("Returning unmodified search term")
-        return q.title()
-
     def execute(self, query: str) -> ToolResponse:
         try:
             self.logger.info(f"Starting Wikipedia search for query: {query}")
             term = self._extract_search_term(query)
             self.logger.info(f"Processed Wikipedia search term: {term}")
 
-            # Try direct page lookup first
             page = self.wiki_api.page(term)
             if not page.exists():
                 self.logger.info(f"Page not found, searching via wikipedia.search() for: {term}")
-                # fallback to wikipedia lib
                 results = wikipedia.search(term)
                 if not results:
                     self.logger.warning(f"No search results for '{term}'")
