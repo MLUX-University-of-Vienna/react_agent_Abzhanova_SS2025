@@ -25,16 +25,16 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
     def separate(self, query: str) -> List[str]:
         # 1) Prompting LLM to produce minimal DSL
         dsl_prompt = (
-            "SYSTEM: You are a query parser. "
-            "Extract all '<field> of <entity>'-style phrases from the user's query.\n"
-            "Return each as DSL in the form field(entity), replacing spaces with underscores but preserving determiners like 'the'.\n"
-            "Join tokens with ' ∧ ' (space-ampersand-space)."
-            "For example:"
-            "  - 'capital of France' → capital(France)"
-            "  - 'population density of Netherlands' → population_density(Netherlands)"
-            f"User query: '{query}'"
-            "Return only the DSL string:"
+            "SYSTEM: You are a language parser that converts user queries into a structured logical form.\n"
+            "Identify key information requests in the query, and express each as field(entity).\n"
+            "- Use concise but informative field and entity names.\n"
+            "- For entities with descriptors (like 'president of the USA'), combine them into a single unit using underscores (e.g., president_of_USA).\n"
+            "- Use '∧' to separate multiple expressions.\n"
+            "- Do not return explanations or anything besides the structured form.\n"
+            f"User query: '{query}'\n"
+            "Return:"
         )
+
         self.logger.debug("Separation prompt:%s", dsl_prompt)
         logic = self.llm.generate(dsl_prompt).strip()
         self.logger.debug("Received logic DSL: %s", logic)
