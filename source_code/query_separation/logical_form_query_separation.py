@@ -25,14 +25,15 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
     def separate(self, query: str) -> List[str]:
         # 1) Prompting LLM to produce minimal DSL
         dsl_prompt = (
-            "SYSTEM: You are a logic parser. Convert the user's question into a logical form using the following rules:\n"
-            "- Use field(entity) or field(x) for variables.\n"
-            "- Use logical operators: ∧ (and), ∨ (or), ¬ (not), ⇒ (implies), =, >, <.\n"
-            "- Resolve pronouns (like 'he', 'they') to what they refer to.\n"
-            "- Keep the form clean and symbolic. Return only the logic, not explanations.\n"
+            "SYSTEM: Convert the user's question into a logical representation using the following DSL:\n"
+            "- Use field(entity) expressions, joined by logical operators: ∧ (and), ∨ (or), ¬ (not)\n"
+            "- Be strict: only represent what is explicitly asked.\n"
+            "- Do not infer or expand the question.\n"
+            "- Resolve pronouns to their referent.\n"
             f"User query: '{query}'\n"
-            "Return logical form:"
-        )
+            "DSL:"
+        )   
+
 
 
         self.logger.debug("Separation prompt:%s", dsl_prompt)
