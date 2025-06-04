@@ -16,10 +16,10 @@ handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 logger.addHandler(handler)
 
 class ReActAgent:
-    def __init__(self, llm: LLMInterface, tools: Dict[str, AgentTool]):
+    def __init__(self, tool_selector_llm: LLMInterface, answer_generator_llm: LLMInterface, confidence_assessor_llm: LLMInterface, tools: Dict[str, AgentTool]):
         self.separator = LLMLogicalSeparationStrategy(llm)
         self.selector  = RegexPatternToolSelector(llm)
-        self.task_manager = TaskManager(llm, tools, self.selector)
+        self.task_manager = TaskManager(tool_selector_llm, answer_generator_llm, confidence_assessor_llm, tools, self.selector)
         self.llm = llm
 
     def handle(self, query: str) -> str:
