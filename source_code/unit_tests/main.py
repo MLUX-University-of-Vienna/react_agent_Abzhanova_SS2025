@@ -37,11 +37,20 @@ def run_test_case(agent: ReActAgent, query: str, expected_tool: str):
 
 def main():
 
-    llm = GemmaInterface(model="gemma3:1b", temperature=0.1)
+    query_separator_llm = GemmaInterface(model="gemma3:4b", temperature=0.1)
+    tool_selector_llm = GemmaInterface(model="gemma3:4b", temperature=0.1)
+    answer_generator_llm = OllamaInterface(model="deepseek-r1:8b", temperature=0.2)
+    confidence_assessor_llm = OllamaInterface(model="deepseek-r1:8b", temperature=0.0)
 
     tools = create_tools()
 
-    agent = ReActAgent(llm, tools)
+    agent = ReActAgent(
+        query_separator_llm=query_separator_llm,
+        tool_selector_llm=tool_selector_llm,
+        answer_generator_llm=answer_generator_llm,
+        confidence_assessor_llm=confidence_assessor_llm,
+        tools=tools
+    )
 
     test_cases: List[Tuple[str, str]] = [
         ("What is name of the president of the USA, how old is he?", "web_search"),
