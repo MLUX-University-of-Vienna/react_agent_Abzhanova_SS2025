@@ -20,7 +20,7 @@ class ReActAgent:
         self.separator = LLMLogicalSeparationStrategy(llm)
         self.selector  = RegexPatternToolSelector(llm)
         self.task_manager = TaskManager(tool_selector_llm, answer_generator_llm, confidence_assessor_llm, tools, self.selector)
-        self.llm = llm
+        self.answer_generator_llm = answer_generator_llm
 
     def handle(self, query: str) -> str:
         logger.info(f"Received query: {query}")
@@ -64,4 +64,4 @@ class ReActAgent:
             "Please combine these into a single, coherent final response to the original query:\n"
             f"\"{original_query}\"\n\nAnswer:"
         )
-        return self.llm.generate(agg_prompt).strip()
+        return self.answer_generator_llm.generate(agg_prompt).strip()
