@@ -21,9 +21,17 @@ class CalculatorTool(AgentTool):
         - Parentheses: ()"""
 
     _math_patterns = [
-        r'calculat(e|ing|ion)|comput(e|ing)|solve|^how (much|many)',
-        r'[\+\-\*/%^\(\)]|\d+\s*[\+\-\*/]\s*\d+|\d+!|!\d+|sqrt\(|\^|\*\*',
-        r'what (is|are) (the )?(result|answer|value) (of|for)'
+        r'\b(calculate|calculating|calculation|compute|computing|solve|evaluate|work out|figure out|simplify)\b',
+
+        r'\bwhat (is|are|would be|could be|is the|is the result of)\b.*\b(sum|difference|product|quotient|value|answer|result|total)\b',
+
+        r'\bhow (much|many|long|far|fast|tall)\b.*[\d+\-*/%^]',  
+
+        r'[-+*/%^=()]+',
+        r'\b\d+\s*[-+*/^%]\s*\d+\b',
+        r'\d+!?|\b!?\d+\b',    
+        r'\bsqrt\(|√\d+',           
+        r'\b\d+\s*(\^|\*\*)\s*\d+\b' 
     ]
 
     _examples = """User: What is (15*3 + 2)/5?
