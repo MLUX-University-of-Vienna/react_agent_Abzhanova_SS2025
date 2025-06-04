@@ -88,8 +88,8 @@ class TaskManager:
         self.max_attempts_per_tool = max_attempts_per_tool
 
         self.tool_executor = ToolExecutor(tools)
-        self.answer_generator = AnswerGenerator(llm)
-        self.confidence_assessor = ConfidenceAssessor(llm)
+        self.answer_generator = AnswerGenerator(answer_generator_llm)
+        self.confidence_assessor = ConfidenceAssessor(confidence_assessor_llm)
 
     def run(self, query: str) -> Dict[str, object]:
         self.logger.info(f"Starting process for query: {query}")
