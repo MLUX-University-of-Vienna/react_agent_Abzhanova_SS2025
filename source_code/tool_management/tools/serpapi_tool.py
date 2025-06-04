@@ -21,12 +21,16 @@ class SerpAPITool(AgentTool):
     @classmethod
     def get_patterns(cls) -> List[str]:
         return [
-            r'current (news|events|weather|stock price)',
-            r'latest (update|breaking|trending)',
-            r'recent (developments|discoveries)',
-            r'live (score|update)',
-            r"today's (news|headlines)"
+            r'\b(current|latest|today\'?s|recent|live)\b.*\b(news|events|weather|stock price|headlines|developments|updates|scores?)\b',
+            r'\b(news|weather|stocks?|headlines|score|trend|update|price|forecast)\b.*\b(now|today|currently|live|latest|this week|this moment)\b',
+
+            r'\b(what is|what\'s|how is|how\'s|give me|show me|tell me|can you)\b.*\b(news|weather|stock|score|price|trending)\b.*(now|today|currently|live)?',
+
+            r'\b(live|current|today\'?s)\b.*\b(game|match|score|tournament|results?)\b',
+
+            r'\b(price|value|rate|exchange rate)\b.*\b(of|for)\b.*\b(stock|bitcoin|ethereum|usd|eur|market)\b',
         ]
+
 
     @classmethod
     def get_examples(cls) -> str:
