@@ -70,7 +70,7 @@ Respond only with the confidence score (0.0-1.0):'''
 class TaskManager:
     def __init__(
         self,
-        selector_llm: LLMInterface,
+        tool_selector_llm: LLMInterface,
         answer_generator_llm: LLMInterface,
         confidence_assessor_llm: LLMInterface,
         tools: Dict[str, AgentTool],
@@ -79,7 +79,7 @@ class TaskManager:
         max_attempts_per_tool: int = 2
     ):
         self.logger = logger
-        self.selector_llm = selector_llm
+        self.tool_selector_llm = tool_selector_llm
         self.answer_generator_llm = answer_generator_llm
         self.confidence_assessor_llm = confidence_assessor_llm
         self.tools = tools
