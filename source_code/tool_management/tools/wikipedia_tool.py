@@ -30,13 +30,16 @@ class WikipediaTool(AgentTool):
 
     _encyclopedia_patterns = [
         r'who (is|was|invented|created|discovered|founded)',
-        r'what (is|are) (the )?(history|origin|meaning|definition)',
+        r'what (is|are)( the)? (name|history|origin|meaning|definition|role|title)',
+        r'what is the name of',
+        r'what does .* mean',
         r'define|explain|describe',
         r'when (was|did)|where (was|did)',
         r'(tell me|what)\s*about',
         r'^(can you|please) (explain|describe)',
         r'\b(biography|invention|discovery|theory|concept)\b'
     ]
+
 
     _examples = """User: Who invented Python?
 {
