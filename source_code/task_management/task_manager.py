@@ -107,7 +107,7 @@ class TaskManager:
                 self.logger.info("No tools left, using fallback answer")
                 return {"final_answer": self.answer_generator.fallback(query)}
 
-            tool_name = self._select_tool(query)
+            tool_name = self._select_tool(query, available_tools)
             if not tool_name:
                 self.logger.info("Tool selection failed. Asking for clarification.")
                 return {"clarification": self.selector.ask_clarification(query)}
@@ -143,9 +143,11 @@ class TaskManager:
     def _get_available_tools(self, tool_attempts):
         return [t for t, attempts in tool_attempts.items() if attempts < self.max_attempts_per_tool]
 
-    def _select_tool(self, query: str):
-        candidates = self.selector.gather_candidates(query, self.tools)
-        return self.selector.choose_tool(query, candidates, self.tools)
+    def _select_tool(self, query: str, available_tools: List[str]):
+        available_tool_dict = {name: self.tools[name] for name in available_tools}
+        candidates = self.selector.gather_candidates(query, available_tool_dict)
+        return self.selector.choose_tool(query, candidates, available_tool_dict)
+
 
     def _get_tool_result(self, tool_name: str, query: str, cache: dict):
         if (tool_name, query) in cache:
