@@ -50,16 +50,20 @@ class ConfidenceAssessor:
         self.llm = llm
 
     def assess(self, query: str, result: str, answer: str) -> float:
-        prompt = f'''Rate the confidence (0-1) in this answer's accuracy:
+        prompt = f'''Evaluate the confidence (0-1) in this answer's accuracy:
 
-{answer}
+Question: {query}
+
+Tool Result: {result}
+
+Generated Answer:{answer}
 
 Consider:
 1. Source reliability
 2. Information consistency
 3. Completeness
 
-Respond only with the confidence score (0.0-1.0):'''
+Respond with ONLY a number (0.0–1.0):'''
         try:
             output = self.llm.generate(prompt).strip()
             logger.debug(f"ConfidenceAssessor Output:\n{output}")
