@@ -121,7 +121,7 @@ class TaskManager:
             result = self._get_tool_result(tool_name, query, tool_result_cache)
             self.logger.debug(f"Tool result: {result}")
 
-            answer, confidence = self._evaluate_result(query, result, answer)
+            answer, confidence = self._evaluate_result(query, result)
             self.logger.debug(f"Generated answer: {answer}")
             self.logger.info(f"Confidence: {confidence:.2f}")
 
@@ -162,7 +162,7 @@ class TaskManager:
 
     def _evaluate_result(self, query: str, result: str):
         answer = self.answer_generator.generate(query, result)
-        confidence = self.confidence_assessor.assess(answer)
+        confidence = self.confidence_assessor.assess(query, result, answer)
         return answer, confidence
 
     def _extract_final_answer(self, answer: str) -> str:
