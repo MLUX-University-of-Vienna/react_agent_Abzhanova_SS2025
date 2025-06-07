@@ -88,6 +88,8 @@ Verification Question:"""
 
         result = self.verifier_tool.execute(verification_question)
 
+        return verification_question, result.content
+
 class TaskManager:
     def __init__(
         self,
