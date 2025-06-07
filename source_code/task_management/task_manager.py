@@ -69,6 +69,15 @@ Respond with ONLY a number (0.0–1.0):'''
         except:
             logger.debug(f"Confidence Assesment failed")
 
+        if verifier_result:
+            verifier_prompt = f"""Does the following information support the statement?
+
+Statement: "{answer}"
+Web Result:
+{verifier_result}
+
+Answer YES or NO."""   
+
 
 class ResultVerifierViaTool:
     def __init__(self, llm: LLMInterface, verifier_tool: AgentTool):
