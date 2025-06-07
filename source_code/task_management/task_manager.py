@@ -85,8 +85,10 @@ Answer: {answer}
 Verification Question:"""
 
         verification_question = self.llm.generate(prompt).strip()
+        logger.debug(f"Verification question:\n{verification_question}")
 
         result = self.verifier_tool.execute(verification_question)
+        logger.debug(f"Verification result:\n{result.content}")
 
         return verification_question, result.content
 
