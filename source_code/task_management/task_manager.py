@@ -65,7 +65,6 @@ Consider:
 Respond with ONLY a number (0.0–1.0):'''
         try:
             llm_score = float(self.llm.generate(llm_prompt).strip())
-            logger.debug(f"ConfidenceAssessor LLM output:\n{llm_score}")
         except Exception as e:
             logger.debug("Confidence assessment via LLM failed, defaulting to 0.5", exc_info=e)
             llm_score = 0.5
@@ -86,6 +85,15 @@ Answer YES or NO."""
                 verifier_score = 0.5
         else:
             verifier_score = 0.5
+
+        final_score = round(0.5 * llm_score + 0.5 * verifier_score, 2)
+        logger.debug(
+            f"Confidence assessment summary:\n"
+            f"- LLM Score: {llm_score}\n"
+            f"- Verifier Score: {verifier_score}\n"
+            f"- Final Combined Score: {final_score}"
+        )
+        return final_score
 
 
 class ResultVerifierViaTool:
