@@ -53,15 +53,14 @@ class ConfidenceAssessor:
         prompt = f'''Evaluate the confidence (0-1) in this answer's accuracy:
 
 Question: {query}
-
 Tool Result: {result}
-
 Generated Answer:{answer}
 
 Consider:
 1. Source reliability
 2. Information consistency
 3. Completeness
+4. Remember that you can have outdated information
 
 Respond with ONLY a number (0.0–1.0):'''
         try:
@@ -69,7 +68,7 @@ Respond with ONLY a number (0.0–1.0):'''
             logger.debug(f"ConfidenceAssessor Output:\n{output}")
             return float(output)
         except:
-            return 0.5
+            logger.debug(f"Confidence Assesment failed")
 
 class ResultVerifierViaTool:
     def __init__(self, llm: LLMInterface, verifier_tool: AgentTool):
