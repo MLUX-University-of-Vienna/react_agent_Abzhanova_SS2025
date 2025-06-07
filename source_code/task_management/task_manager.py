@@ -83,7 +83,10 @@ Original Question: {original_query}
 Answer: {answer}
 
 Verification Question:"""
+
         verification_question = self.llm.generate(prompt).strip()
+
+        result = self.verifier_tool.execute(verification_question)
 
 class TaskManager:
     def __init__(
