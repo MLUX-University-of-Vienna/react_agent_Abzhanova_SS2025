@@ -77,7 +77,7 @@ class ResultVerifierViaTool:
         self.verifier_tool = verifier_tool         
 
     def verify(self, original_query: str, answer: str) -> Tuple[str, str]:
-        
+        verification_question = self.llm.generate(prompt).strip()
 
 class TaskManager:
     def __init__(
