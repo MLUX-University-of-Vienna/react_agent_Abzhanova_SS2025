@@ -71,6 +71,11 @@ Respond with ONLY a number (0.0–1.0):'''
         except:
             return 0.5
 
+class ResultVerifierViaTool:
+    def __init__(self, llm: LLMInterface, verifier_tool: AgentTool):
+        self.llm = llm
+        self.verifier_tool = verifier_tool           
+
 class TaskManager:
     def __init__(
         self,
@@ -80,7 +85,7 @@ class TaskManager:
         tools: Dict[str, AgentTool],
         selector: ToolSelectionStrategy,
         confidence_threshold: float = 0.80,
-        max_attempts_per_tool: int = 2
+        max_attempts_per_tool: int = 1
     ):
         self.logger = logger
         self.tool_selector_llm = tool_selector_llm
