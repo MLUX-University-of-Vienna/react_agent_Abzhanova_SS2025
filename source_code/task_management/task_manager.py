@@ -74,7 +74,10 @@ Respond with ONLY a number (0.0–1.0):'''
 class ResultVerifierViaTool:
     def __init__(self, llm: LLMInterface, verifier_tool: AgentTool):
         self.llm = llm
-        self.verifier_tool = verifier_tool           
+        self.verifier_tool = verifier_tool         
+
+    def verify(self, original_query: str, answer: str) -> Tuple[str, str]:
+        
 
 class TaskManager:
     def __init__(
