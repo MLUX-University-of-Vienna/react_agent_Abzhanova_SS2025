@@ -64,9 +64,8 @@ Consider:
 
 Respond with ONLY a number (0.0–1.0):'''
         try:
-            output = self.llm.generate(prompt).strip()
-            logger.debug(f"ConfidenceAssessor Output:\n{output}")
-            return float(output)
+            llm_score = float(self.llm.generate(llm_prompt).strip())
+            logger.debug(f"ConfidenceAssessor LLM output:\n{llm_score}")
         except:
             logger.debug(f"Confidence Assesment failed")
 
