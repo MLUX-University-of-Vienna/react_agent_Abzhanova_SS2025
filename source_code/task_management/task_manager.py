@@ -77,6 +77,12 @@ class ResultVerifierViaTool:
         self.verifier_tool = verifier_tool         
 
     def verify(self, original_query: str, answer: str) -> Tuple[str, str]:
+        prompt = f"""Rephrase the original question into a yes/no question that checks the correctness of this answer.
+
+Original Question: {original_query}
+Answer: {answer}
+
+Verification Question:"""
         verification_question = self.llm.generate(prompt).strip()
 
 class TaskManager:
