@@ -78,10 +78,13 @@ Web Result:
 {verifier_result}
 
 Answer YES or NO."""   
-        try:
-            response = self.llm.generate(verifier_prompt).strip().lower()
-            verifier_score = 1.0 if "yes" in response else 0.3
-        except:
+            try:
+                response = self.llm.generate(verifier_prompt).strip().lower()
+                verifier_score = 1.0 if "yes" in response else 0.3
+            except Exception as e:
+                logger.debug("Verification check failed, defaulting verifier score to 0.5", exc_info=e)
+                verifier_score = 0.5
+        else:
             verifier_score = 0.5
 
 
