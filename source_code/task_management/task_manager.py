@@ -66,8 +66,9 @@ Respond with ONLY a number (0.0–1.0):'''
         try:
             llm_score = float(self.llm.generate(llm_prompt).strip())
             logger.debug(f"ConfidenceAssessor LLM output:\n{llm_score}")
-        except:
-            logger.debug(f"Confidence Assesment failed")
+        except Exception as e:
+            logger.debug("Confidence assessment via LLM failed, defaulting to 0.5", exc_info=e)
+            llm_score = 0.5
 
         if verifier_result:
             verifier_prompt = f"""Does the following information support the statement?
@@ -77,6 +78,11 @@ Web Result:
 {verifier_result}
 
 Answer YES or NO."""   
+        try:
+            response = self.llm.generate(verifier_prompt).strip().lower()
+            verifier_score = 1.0 if "yes" in response else 0.3
+        except:
+            verifier_score = 0.5
 
 
 class ResultVerifierViaTool:
