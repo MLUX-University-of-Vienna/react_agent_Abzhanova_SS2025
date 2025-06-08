@@ -48,6 +48,7 @@ Final Answer:"""
 class ConfidenceAssessor:
     def __init__(self, llm: LLMInterface):
         self.llm = llm
+        self.verifier = ResultVerifierViaTool(llm, verifier_tool) if verifier_tool else None
 
     def assess(self, query: str, result: str, answer: str) -> float:
         prompt = f'''Evaluate the confidence (0-1) in this answer's accuracy:
