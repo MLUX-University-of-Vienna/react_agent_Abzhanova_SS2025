@@ -71,8 +71,7 @@ Respond with ONLY a number (0.0–1.0):'''
             logger.debug("Confidence assessment via LLM failed, defaulting to 0.5", exc_info=e)
             llm_score = 0.5
 
-        if verifier_result:
-            verifier_prompt = f"""Does the following information support the statement?
+        if self.verifier:
 
 Statement: "{answer}"
 Web Result:
