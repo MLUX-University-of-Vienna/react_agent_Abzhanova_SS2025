@@ -39,8 +39,8 @@ def main():
 
     query_separator_llm = GemmaInterface(model="gemma3:4b", temperature=0.1)
     tool_selector_llm = GemmaInterface(model="gemma3:4b", temperature=0.1)
-    answer_generator_llm = OllamaInterface(model="deepseek-r1:8b", temperature=0.2)
-    confidence_assessor_llm = OllamaInterface(model="deepseek-r1:8b", temperature=0.0)
+    answer_generator_llm = GemmaInterface(model="gemma3:4b", temperature=0.1)
+    confidence_assessor_llm = GemmaInterface(model="gemma3:4b", temperature=0.1)
 
     tools = create_tools()
 
