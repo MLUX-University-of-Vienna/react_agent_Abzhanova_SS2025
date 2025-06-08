@@ -49,7 +49,7 @@ class ConfidenceAssessor:
     def __init__(self, llm: LLMInterface):
         self.llm = llm
 
-    def assess(self, query: str, result: str, answer: str, verifier_result: Optional[str] = None) -> float:
+    def assess(self, query: str, result: str, answer: str) -> float:
         prompt = f'''Evaluate the confidence (0-1) in this answer's accuracy:
 
 Question: {query}
