@@ -66,6 +66,7 @@ Consider:
 Respond with ONLY a number (0.0–1.0):'''
         try:
             llm_score = float(self.llm.generate(llm_prompt).strip())
+            llm_verification_response = self.llm.generate(llm_prompt).strip()
         except Exception as e:
             logger.debug("Confidence assessment via LLM failed, defaulting to 0.5", exc_info=e)
             llm_score = 0.5
