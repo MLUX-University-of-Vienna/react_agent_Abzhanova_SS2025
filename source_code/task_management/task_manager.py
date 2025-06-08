@@ -72,12 +72,19 @@ Respond with ONLY a number (0.0–1.0):'''
             llm_score = 0.5
 
         if self.verifier:
+            try:
+                verification_question, verification_result = self.verifier.verify(query, answer)
+                try:
+                verification_question, verification_result = self.verifier.verify(query, answer)
+
+                verifier_prompt = f"""Does the following information support the statement?
 
 Statement: "{answer}"
 Web Result:
-{verifier_result}
+{verification_result}
 
-Answer YES or NO."""   
+Answer YES or NO:"""
+
             try:
                 response = self.llm.generate(verifier_prompt).strip().lower()
                 verifier_score = 1.0 if "yes" in response else 0.3
