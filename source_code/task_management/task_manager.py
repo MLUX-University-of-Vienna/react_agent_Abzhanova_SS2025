@@ -52,19 +52,27 @@ class ConfidenceAssessor:
         self.verifier = ResultVerifierViaTool(llm, SerpAPITool(api_key="b53c73f7ff8666ff176932332e272be8175325eede05c4f1b716cbbccf6103ca"))
 
     def assess(self, query: str, result: str, answer: str) -> float:
-        llm_prompt = f'''Evaluate the confidence (0-1) in this answer's accuracy:
+        prompt = f'''You are a confidence grading assistant.
+
+Evaluate the confidence (0.0 to 1.0) in the correctness of the given answer.
 
 Question: {query}
-Tool Result: {result}
-Generated Answer:{answer}
 
-Consider:
-1. Source reliability
-2. Information consistency
-3. Completeness
-4. Remember that you can have outdated information
+Tool Result:
+{result}
 
-Respond with ONLY a number (0.0–1.0):'''
+Answer:
+{answer}
+
+Scoring Criteria:
+- Source reliability
+- Information consistency
+- Completeness
+- Recency of information (the tool might be outdated)
+
+Respond ONLY with a number between 0.0 and 1.0 (e.g., 0.85). Do NOT include any text or explanation.
+'''
+
         try:
             llm_response = self.llm.generate(llm_prompt).strip()
             llm_score = float(llm_response)
