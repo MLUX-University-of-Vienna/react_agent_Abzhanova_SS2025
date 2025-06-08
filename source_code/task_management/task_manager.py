@@ -74,7 +74,8 @@ Respond ONLY with a number between 0.0 and 1.0 (e.g., 0.85). Do NOT include any 
 '''
 
         try:
-            llm_response = self.llm.generate(llm_prompt).strip()
+            llm_response = self.llm.generate(prompt).strip()
+            logger.debug(f"Raw LLM confidence output: '{llm_response}'")
             llm_score = float(llm_response)
         except Exception as e:
             logger.debug("Confidence assessment via LLM failed, defaulting to 0.5", exc_info=e)
