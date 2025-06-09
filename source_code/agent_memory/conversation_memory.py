@@ -18,8 +18,7 @@ class ConversationMemory:
         context = "\n".join([f"Q: {entry['query']}\nA: {entry['answer']}" for entry in self.history[-5:]])
         return f"Recent conversation context:\n{context}"
 
-    
-    
+    def resolve_pronouns(self, text: str) -> str:
         
 
     
