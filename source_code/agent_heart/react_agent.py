@@ -54,7 +54,7 @@ class ReActAgent:
             resolved_sq = self.conversation_memory.resolve_pronouns(sq)
             logger.info(f"Handling subquery: {resolved_sq}")
 
-            result = self.task_manager.run(sq)
+            result = self.task_manager.run(resolved_sq)
 
             if "final_answer" in result:
                 answer = result["final_answer"]
@@ -64,11 +64,11 @@ class ReActAgent:
                 logger.warning(f"Subquery clarification required: {answer}")
             else:
                 answer = "[No answer produced]"
-                logger.error("Unexpected result structure from task manager.")
+                logger.error("Unexpected result structure from task manager")
             
-            self.query_memory.add_subquery(sq, answer)
+            self.query_memory.add_subquery(resolved_sq, answer)
 
-            results.append({"question": sq, "answer": answer})
+            results.append({"question": resolved_sq, "answer": answer})
         return results
 
     def _aggregate_answers(self, original_query: str, parts: List[Dict[str, str]]) -> str:
