@@ -57,7 +57,7 @@ class ReActAgent:
             result = self.task_manager.run(resolved_sq)
 
             if "final_answer" in result:
-                answer = result["final_answer"]
+                raw = result["final_answer"]
                 answer = raw.replace("Final Answer:", "").strip()
                 logger.debug(f"Subquery result: {answer}")
             elif "clarification" in result:
