@@ -72,5 +72,3 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
             return [query]
 
         return subqueries
-
-    def _fix_pronouns(self, dsl: str) -> str:
