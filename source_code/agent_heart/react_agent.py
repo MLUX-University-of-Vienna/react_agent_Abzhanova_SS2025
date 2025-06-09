@@ -55,10 +55,12 @@ class ReActAgent:
                 logger.debug(f"Subquery result: {answer}")
             elif "clarification" in result:
                 answer = f"[Needs clarification] {result['clarification']}"
-                logger.warning(f"Subquery clarification required: {answer}")
+                logger.warning‚(f"Subquery clarification required: {answer}")
             else:
                 answer = "[No answer produced]"
                 logger.error("Unexpected result structure from task manager.")
+            
+            self.query_memory.add_subquery(sq, answer)
 
             results.append({"question": sq, "answer": answer})
         return results
