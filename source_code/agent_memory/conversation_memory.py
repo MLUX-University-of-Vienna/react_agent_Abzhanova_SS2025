@@ -29,6 +29,8 @@ class ConversationMemory:
             if entity:
                 text = re.sub(rf"\b{pronoun}\b", entity, text, flags=re.IGNORECASE)
         return text
+
+    def _find_entity(self, text: str, gender: str = None) -> str:
         
 
     
