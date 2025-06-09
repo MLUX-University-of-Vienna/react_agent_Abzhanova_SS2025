@@ -15,6 +15,10 @@ class ConversationMemory:
     def get_relevant_context(self) -> str:#
         if not self.history:
             return ""
+        context = "\n".join([f"Q: {entry['query']}\nA: {entry['answer']}" for entry in self.history[-5:]])
+        return f"Recent conversation context:\n{context}"
+
+    
         
 
     
