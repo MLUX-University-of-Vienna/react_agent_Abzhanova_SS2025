@@ -12,3 +12,6 @@ class QueryMemory:
     def add_subquery(self, subquery: str, answer: str):
         self.subqueries.append((subquery, answer))
 
+    def get_all(self) -> List[Tuple[str, str]]:
+        return self.subqueries
+
