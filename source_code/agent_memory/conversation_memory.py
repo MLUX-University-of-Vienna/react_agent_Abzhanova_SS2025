@@ -12,6 +12,9 @@ class ConversationMemory:
         self.history.append({"query": query, "answer": answer})
         logger.debug(f"Updated conversation memory. Current length: {len(self.history)}")
 
-    def get_relevant_context(self) -> str:
+    def get_relevant_context(self) -> str:#
+        if not self.history:
+            return ""
         
+
     
