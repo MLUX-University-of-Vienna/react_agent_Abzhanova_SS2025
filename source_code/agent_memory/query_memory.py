@@ -8,3 +8,7 @@ class QueryMemory:
     def start_new(self, query: str):
         self.query = query
         self.subqueries = []
+
+    def add_subquery(self, subquery: str, answer: str):
+        self.subqueries.append((subquery, answer))
+
