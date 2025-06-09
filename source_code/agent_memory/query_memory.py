@@ -1,4 +1,4 @@
-
+from typing import List, Tuple
 
 class QueryMemory:
     def __init__(self):
