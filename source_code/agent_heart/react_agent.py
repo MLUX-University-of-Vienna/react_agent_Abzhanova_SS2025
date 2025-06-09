@@ -51,7 +51,9 @@ class ReActAgent:
     def _answer_subqueries(self, subqueries: List[str]) -> List[Dict[str, str]]:
         results = []
         for sq in subqueries:
-            logger.info(f"Handling subquery: {sq}")
+            resolved_sq = self.conversation_memory.resolve_pronouns(sq)
+            logger.info(f"Handling subquery: {resolved_sq}")
+
             result = self.task_manager.run(sq)
 
             if "final_answer" in result:
