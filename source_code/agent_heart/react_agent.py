@@ -33,13 +33,14 @@ class ReActAgent:
         resolved_query = self.conversation_memory.resolve_pronouns(query)
         self.query_memory.start_new(resolved_query)
 
-        subqueries = self._separate_query(query)
+        subqueries = self._separate_query(resolved_query)
+
         results = self._answer_subqueries(subqueries)
         final_answer = self._aggregate_answers(query, results)
         logger.info(f"Final aggregated answer: {final_answer}")
 
         self.conversation_memory.update(query, final_answer)
-        
+
         return final_answer
 
     def _separate_query(self, query: str) -> List[str]:
@@ -58,7 +59,7 @@ class ReActAgent:
                 logger.debug(f"Subquery result: {answer}")
             elif "clarification" in result:
                 answer = f"[Needs clarification] {result['clarification']}"
-                logger.warning‚(f"Subquery clarification required: {answer}")
+                logger.warning(f"Subquery clarification required: {answer}")
             else:
                 answer = "[No answer produced]"
                 logger.error("Unexpected result structure from task manager.")
