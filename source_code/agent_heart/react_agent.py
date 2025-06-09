@@ -31,6 +31,7 @@ class ReActAgent:
         logger.info(f"Received query: {query}")
 
         resolved_query = self.conversation_memory.resolve_pronouns(query)
+        self.query_memory.start_new(resolved_query)
 
         subqueries = self._separate_query(query)
         results = self._answer_subqueries(subqueries)
