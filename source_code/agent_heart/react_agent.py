@@ -24,6 +24,8 @@ class ReActAgent:
         self.selector  = RegexPatternToolSelector(tool_selector_llm)
         self.task_manager = TaskManager(tool_selector_llm, answer_generator_llm, confidence_assessor_llm, tools, self.selector)
         self.answer_generator_llm = answer_generator_llm
+        self.conversation_memory = ConversationMemory()
+        self.query_memory = QueryMemory()
 
     def handle(self, query: str) -> str:
         logger.info(f"Received query: {query}")
