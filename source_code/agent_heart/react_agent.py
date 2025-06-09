@@ -37,6 +37,9 @@ class ReActAgent:
         results = self._answer_subqueries(subqueries)
         final_answer = self._aggregate_answers(query, results)
         logger.info(f"Final aggregated answer: {final_answer}")
+
+        self.conversation_memory.update(query, final_answer)
+        
         return final_answer
 
     def _separate_query(self, query: str) -> List[str]:
