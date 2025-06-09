@@ -68,6 +68,8 @@ class ReActAgent:
             
             self.query_memory.add_subquery(resolved_sq, answer)
 
+            self.conversation_memory.update(resolved_sq, answer)
+
             results.append({"question": resolved_sq, "answer": answer})
         return results
 
