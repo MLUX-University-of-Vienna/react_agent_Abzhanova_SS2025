@@ -30,6 +30,7 @@ class ReActAgent:
     def handle(self, query: str) -> str:
         logger.info(f"Received query: {query}")
 
+        resolved_query = self.conversation_memory.resolve_pronouns(query)
 
         subqueries = self._separate_query(query)
         results = self._answer_subqueries(subqueries)
