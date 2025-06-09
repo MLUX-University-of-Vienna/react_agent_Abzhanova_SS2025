@@ -9,6 +9,8 @@ from query_separation.llm_based_query_separation import LLMQuerySeparationStrate
 from query_separation.logical_form_query_separation import LLMLogicalSeparationStrategy
 from tool_management.tool_selection.hierarchical_tool_selection_strategy import HierarchicalToolSelectionStrategy
 from task_management.task_manager import TaskManager
+from agent_memory.conversation_memory import ConversationMemory
+from agent_memory.query_memory import QueryMemory
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
