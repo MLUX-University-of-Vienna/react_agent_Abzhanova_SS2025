@@ -15,3 +15,7 @@ class QueryMemory:
     def get_all(self) -> List[Tuple[str, str]]:
         return self.subqueries
 
+    def get_context_for_subquery(self, subquery: str) -> str:
+        prior = [f"Q: {q}\nA: {a}" for q, a in self.subqueries if q != subquery]
+        return "\n".join(prior[-3:])
+
