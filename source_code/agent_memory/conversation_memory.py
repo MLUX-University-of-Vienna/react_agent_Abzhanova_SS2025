@@ -19,6 +19,16 @@ class ConversationMemory:
         return f"Recent conversation context:\n{context}"
 
     def resolve_pronouns(self, text: str) -> str:
+        last_answers = " ".join([entry["answer"] for entry in reversed(self.history[-3:])])
+        replacements = {
+            "he": self._find_entity(last_answers, gender="male"),
+            "she": self._find_entity(last_answers, gender="female"),
+            "they": self._find_entity(last_answers),
+        }
+        for pronoun, entity in replacements.items():
+            if entity:
+                text = re.sub(rf"\b{pronoun}\b", entity, text, flags=re.IGNORECASE)
+        return text
         
 
     
