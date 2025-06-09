@@ -1,4 +1,4 @@
-
+from typing import List, Dict
 
 class ConversationMemory:
     def __init__(self):
