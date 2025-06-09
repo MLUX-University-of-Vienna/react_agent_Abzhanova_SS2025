@@ -58,6 +58,7 @@ class ReActAgent:
 
             if "final_answer" in result:
                 answer = result["final_answer"]
+                answer = raw.replace("Final Answer:", "").strip()
                 logger.debug(f"Subquery result: {answer}")
             elif "clarification" in result:
                 answer = f"[Needs clarification] {result['clarification']}"
