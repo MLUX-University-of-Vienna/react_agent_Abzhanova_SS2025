@@ -14,6 +14,11 @@ class QueryPronounsResolver:
                 entity = known_entities[-1] if known_entities else ""
                 sq = self._replace_pronouns(sq, entity)
 
+
+    def _replace_pronouns(self, text: str, entity: str) -> str:
+        if not entity:
+            return text
+        return re.sub(r'\b(he|she|they|it|his|her|their)\b', entity, text, flags=re.IGNORECASE)
     
     def _extract_named_entity(self, text: str) -> str:
         # Extracts first occurrence of a capitalized name-like phrase
