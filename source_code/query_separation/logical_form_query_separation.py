@@ -23,7 +23,6 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
         self.pronoun_resolver = QueryPronounsResolver()
 
     def separate(self, query: str) -> List[str]:
-        # 1) Prompting LLM to produce minimal DSL
         dsl_prompt = (
             "SYSTEM: Convert the user's question into a logical representation using the following DSL:\n"
             "- Use field(entity) expressions, joined by logical operators: ∧ (and), ∨ (or), ¬ (not)\n"
@@ -72,5 +71,8 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
         if not subqueries:
             self.logger.warning("No subqueries were generated; falling back to full query.")
             return [query]
+        
+        resolved_subqueries = self.pronoun_resolver.resolve(subqueries)
+        self.logger.debug("Resolved subqueries: %s", resolved_subqueries)
 
         return subqueries
