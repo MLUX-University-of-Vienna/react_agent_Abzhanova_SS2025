@@ -1,5 +1,12 @@
 import re
+import logger
 from typing import List
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
+logger.addHandler(handler)
 
 class QueryPronounsResolver:
     def resolve(self, subqueries: List[str]) -> List[str]:
