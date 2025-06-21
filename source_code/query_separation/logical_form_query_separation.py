@@ -75,4 +75,4 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
         resolved_subqueries = self.pronoun_resolver.resolve(subqueries)
         self.logger.debug("Resolved subqueries: %s", resolved_subqueries)
 
-        return subqueries
+        return resolved_subqueries
