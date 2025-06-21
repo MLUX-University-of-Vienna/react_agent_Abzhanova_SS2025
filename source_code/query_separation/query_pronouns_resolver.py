@@ -1,5 +1,5 @@
 import re
-import logger
+import logging
 from typing import List
 
 logger = logging.getLogger(__name__)
@@ -12,22 +12,28 @@ class QueryPronounsResolver:
     def resolve(self, subqueries: List[str]) -> List[str]:
         """Resolves pronouns in each subquery based on the nearest named entity found in previous subqueries"""
         if not subqueries:
+            logger.debug("No subqueries provided for resolution.")
             return subqueries
 
         resolved = []
         known_entities = []
 
         for i, sq in enumerate(subqueries):
+            logger.debug(f"Processing subquery {i}: '{sq}'")
             if i > 0:
                 entity = self._last_valid_entity(known_entities)
-                sq = self._replace_pronouns(sq, entity)
+                if entity:
+                    sq = self._replace_pronouns(sq, entity)
+                    logger.debug(f"Replaced pronouns with entity '{entity}': '{sq}'")
 
             entity = self._extract_named_entity(sq)
             if entity:
+                logger.debug(f"Extracted entity: '{entity}'")
                 known_entities.append(entity)
 
             resolved.append(sq)
 
+        logger.debug(f"Resolved subqueries: {resolved}")
         return resolved
 
     def _replace_pronouns(self, text: str, entity: str) -> str:
