@@ -20,6 +20,7 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
 
     def __init__(self, llm: LLMInterface):
         self.llm = llm
+        self.pronoun_resolver = QueryPronounsResolver()
 
     def separate(self, query: str) -> List[str]:
         # 1) Prompting LLM to produce minimal DSL
