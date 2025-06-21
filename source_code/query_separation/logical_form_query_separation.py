@@ -5,6 +5,7 @@ from typing import List
 
 from llm.llm_interface import LLMInterface
 from .query_separation_strategy import QuerySeparationStrategy
+from .query_pronouns_resolver import QueryPronounsResolver
 
 class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
     """
