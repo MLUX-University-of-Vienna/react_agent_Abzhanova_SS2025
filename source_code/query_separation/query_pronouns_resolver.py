@@ -6,9 +6,7 @@ class QueryPronounsResolver:
         if not subqueries:
             return subqueries
 
-        first_entity = self._extract_named_entity(subqueries[0])
-        if not first_entity:
-            return subqueries
+        
 
     
     def _extract_named_entity(self, text: str) -> str:
