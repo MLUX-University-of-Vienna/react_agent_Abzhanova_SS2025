@@ -9,6 +9,7 @@ from query_separation.llm_based_query_separation import LLMQuerySeparationStrate
 from query_separation.logical_form_query_separation import LLMLogicalSeparationStrategy
 from tool_management.tool_selection.hierarchical_tool_selection_strategy import HierarchicalToolSelectionStrategy
 from task_management.task_manager import TaskManager
+
 from agent_memory.conversation_memory import ConversationMemory
 from agent_memory.query_memory import QueryMemory
 
@@ -24,6 +25,7 @@ class ReActAgent:
         self.selector  = RegexPatternToolSelector(tool_selector_llm)
         self.task_manager = TaskManager(tool_selector_llm, answer_generator_llm, confidence_assessor_llm, tools, self.selector)
         self.answer_generator_llm = answer_generator_llm
+
         self.conversation_memory = ConversationMemory()
         self.query_memory = QueryMemory()
 
@@ -31,10 +33,11 @@ class ReActAgent:
         logger.info(f"Received query: {query}")
 
         resolved_query = self.conversation_memory.resolve_pronouns(query)
+        resolved_query = query
+
         self.query_memory.start_new(resolved_query)
 
         subqueries = self._separate_query(resolved_query)
-
         results = self._answer_subqueries(subqueries)
         final_answer = self._aggregate_answers(query, results)
         logger.info(f"Final aggregated answer: {final_answer}")
@@ -52,6 +55,7 @@ class ReActAgent:
         results = []
         for sq in subqueries:
             resolved_sq = self.conversation_memory.resolve_pronouns(sq)
+            resolved_sq = sq
             logger.info(f"Handling subquery: {resolved_sq}")
 
             result = self.task_manager.run(resolved_sq)
@@ -66,7 +70,7 @@ class ReActAgent:
             else:
                 answer = "[No answer produced]"
                 logger.error("Unexpected result structure from task manager")
-            
+
             self.query_memory.add_subquery(resolved_sq, answer)
 
             self.conversation_memory.update(resolved_sq, answer)
