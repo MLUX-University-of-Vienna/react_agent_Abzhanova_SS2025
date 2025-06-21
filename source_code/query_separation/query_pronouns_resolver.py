@@ -12,7 +12,7 @@ class QueryPronounsResolver:
 
         for i, sq in enumerate(subqueries):
             if i > 0:
-                entity = known_entities[-1] if known_entities else ""
+                entity = self._last_valid_entity(known_entities)
                 sq = self._replace_pronouns(sq, entity)
 
             entity = self._extract_named_entity(sq)
@@ -32,3 +32,9 @@ class QueryPronounsResolver:
         # Extracts first occurrence of a capitalized name-like phrase
         matches = re.findall(r"([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)", text)
         return matches[0] if matches else ""
+    
+    def _last_valid_entity(self, entities: List[str]) -> str:
+        for entity in reversed(entities):
+            if not re.match(r"(?i)^what|who|where|when|why|how$", entity):
+                return entity
+        return ""
