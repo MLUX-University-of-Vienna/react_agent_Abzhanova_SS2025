@@ -18,6 +18,10 @@ class QueryPronounsResolver:
             if entity:
                 known_entities.append(entity)
 
+            resolved.append(sq)
+
+        return resolved
+
 
     def _replace_pronouns(self, text: str, entity: str) -> str:
         if not entity:
