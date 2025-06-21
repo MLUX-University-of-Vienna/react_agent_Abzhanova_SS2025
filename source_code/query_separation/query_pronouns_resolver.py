@@ -11,6 +11,8 @@ class QueryPronounsResolver:
 
          for i, sq in enumerate(subqueries):
             if i > 0:
+                entity = known_entities[-1] if known_entities else ""
+                sq = self._replace_pronouns(sq, entity)
 
     
     def _extract_named_entity(self, text: str) -> str:
