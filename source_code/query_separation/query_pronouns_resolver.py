@@ -14,6 +14,10 @@ class QueryPronounsResolver:
                 entity = known_entities[-1] if known_entities else ""
                 sq = self._replace_pronouns(sq, entity)
 
+            entity = self._extract_named_entity(sq)
+            if entity:
+                known_entities.append(entity)
+
 
     def _replace_pronouns(self, text: str, entity: str) -> str:
         if not entity:
