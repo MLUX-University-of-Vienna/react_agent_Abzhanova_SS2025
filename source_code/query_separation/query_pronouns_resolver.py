@@ -6,7 +6,11 @@ class QueryPronounsResolver:
         if not subqueries:
             return subqueries
 
-        
+        resolved = []
+        known_entities = []
+
+         for i, sq in enumerate(subqueries):
+            if i > 0:
 
     
     def _extract_named_entity(self, text: str) -> str:
