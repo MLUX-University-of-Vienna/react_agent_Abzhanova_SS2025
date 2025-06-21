@@ -3,6 +3,7 @@ from typing import List
 
 class QueryPronounsResolver:
     def resolve(self, subqueries: List[str]) -> List[str]:
+        """ Resolves pronouns in each subquery based on the nearest named entity found in previous subqueries"""
         if not subqueries:
             return subqueries
 
