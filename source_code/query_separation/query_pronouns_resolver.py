@@ -72,9 +72,13 @@ class QueryPronounsResolver:
         return entity + "'" if entity.endswith("s") else entity + "'s"
 
     def _extract_named_entity(self, text: str) -> str:
-        # Extracts first occurrence of a capitalized name-like phrase
-        matches = re.findall(r"([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)", text)
-        return matches[0] if matches else ""
+        match = re.search(
+            r"(?:the\s)?(?:name of\s)?((?:president|king|queen|prime minister|CEO|founder|director) of [A-Z][a-zA-Z]+(?:\s[A-Z][a-zA-Z]+)*)",
+            text, re.IGNORECASE
+        )
+        if match:
+            entity = match.group(1).strip()
+            return entity
     
     def _last_valid_entity(self, entities: List[str]) -> str:
         for entity in reversed(entities):
