@@ -71,8 +71,5 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
         if not subqueries:
             self.logger.warning("No subqueries were generated; falling back to full query.")
             return [query]
-        
-        resolved_subqueries = self.pronoun_resolver.resolve(subqueries)
-        self.logger.debug("Resolved subqueries: %s", resolved_subqueries)
 
-        return resolved_subqueries
+        return subqueries
