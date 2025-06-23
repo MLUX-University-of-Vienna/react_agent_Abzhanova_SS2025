@@ -1,6 +1,6 @@
 import re
 import logging
-from typing import List
+from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
