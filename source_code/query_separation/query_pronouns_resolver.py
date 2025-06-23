@@ -24,7 +24,6 @@ class QueryPronounsResolver:
             return subqueries
 
         resolved = []
-        known_entities = []
 
         for i, sq in enumerate(subqueries):
             logger.debug(f"Processing subquery {i}: '{sq}'")
