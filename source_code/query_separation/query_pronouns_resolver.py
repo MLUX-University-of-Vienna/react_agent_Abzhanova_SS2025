@@ -66,6 +66,9 @@ class QueryPronounsResolver:
 
         return text
 
+    def _possessive_form(self, entity: Optional[str]) -> Optional[str]:
+        
+
     def _extract_named_entity(self, text: str) -> str:
         # Extracts first occurrence of a capitalized name-like phrase
         matches = re.findall(r"([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)", text)
