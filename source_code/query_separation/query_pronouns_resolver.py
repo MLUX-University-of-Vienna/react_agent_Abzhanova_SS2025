@@ -87,8 +87,3 @@ class QueryPronounsResolver:
         
         return None
     
-    def _last_valid_entity(self, entities: List[str]) -> str:
-        for entity in reversed(entities):
-            if not re.match(r"(?i)^what|who|where|when|why|how$", entity):
-                return entity
-        return ""
