@@ -12,6 +12,7 @@ from task_management.task_manager import TaskManager
 
 from agent_memory.conversation_memory import ConversationMemory
 from agent_memory.query_memory import QueryMemory
+from agent_memory.query_pronouns_resolver import QueryPronounsResolver
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -49,7 +50,11 @@ class ReActAgent:
     def _separate_query(self, query: str) -> List[str]:
         subqs = self.separator.separate(query)
         logger.debug(f"Separated into {len(subqs)} subquery(ies): {subqs}")
-        return subqs
+
+        resolver = QueryPronounsResolver()
+        resolved_subqs = resolver.resolve(subqs)
+        logger.debug(f"Resolved subqueries: {resolved_subqs}")
+        return resolved_subqs
 
     def _answer_subqueries(self, subqueries: List[str]) -> List[Dict[str, str]]:
         results = []
