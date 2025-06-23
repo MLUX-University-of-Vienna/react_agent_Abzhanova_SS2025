@@ -34,7 +34,12 @@ class QueryPronounsResolver:
             entity = self._extract_named_entity(sq)
             if entity:
                 logger.debug(f"Extracted entity: '{entity}'")
-                known_entities.append(entity)
+                gender = self._guess_gender(entity)
+                if gender:
+                    self.context[gender] = entity
+                self.context["last"] = entity
+            else:
+                logger.debug("No valid named entity found in subquery.")
 
             resolved.append(sq)
 
