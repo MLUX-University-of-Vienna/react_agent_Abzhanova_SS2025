@@ -67,7 +67,9 @@ class QueryPronounsResolver:
         return text
 
     def _possessive_form(self, entity: Optional[str]) -> Optional[str]:
-        
+        if not entity:
+            return None
+        return entity + "'" if entity.endswith("s") else entity + "'s"
 
     def _extract_named_entity(self, text: str) -> str:
         # Extracts first occurrence of a capitalized name-like phrase
