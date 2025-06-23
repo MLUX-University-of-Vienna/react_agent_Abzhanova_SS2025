@@ -57,6 +57,15 @@ class QueryPronounsResolver:
             r'\btheir\b': self._possessive_form(self.context.get("last")),
         }
 
+        for pattern, replacement in replacements.items():
+            if replacement:
+                new_text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+                if new_text != text:
+                    logger.debug(f"Replaced '{pattern}' with '{replacement}' in '{text}'")
+                    text = new_text
+
+        return text
+
     def _extract_named_entity(self, text: str) -> str:
         # Extracts first occurrence of a capitalized name-like phrase
         matches = re.findall(r"([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)", text)
