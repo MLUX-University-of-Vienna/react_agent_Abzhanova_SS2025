@@ -79,6 +79,13 @@ class QueryPronounsResolver:
         if match:
             entity = match.group(1).strip()
             return entity
+
+        tokens = re.findall(r"\b[A-Z][a-z]+\b(?:\s[A-Z][a-z]+\b)*", text)
+        for token in tokens:
+            if token.lower() not in {"what", "how", "who", "where", "when", "why"}:
+                return token.strip()
+        
+        return None
     
     def _last_valid_entity(self, entities: List[str]) -> str:
         for entity in reversed(entities):
