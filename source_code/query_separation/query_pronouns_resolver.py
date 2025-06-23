@@ -88,3 +88,8 @@ class QueryPronounsResolver:
         return None
     
     def _guess_gender(self, entity: str) -> Optional[str]:
+        if re.search(r'\bpresident|king|man|Mr\.\b', entity, re.IGNORECASE):
+            return "male"
+        if re.search(r'\bqueen|woman|Mrs\.|Ms\.\b', entity, re.IGNORECASE):
+            return "female"
+        return "neutral"
