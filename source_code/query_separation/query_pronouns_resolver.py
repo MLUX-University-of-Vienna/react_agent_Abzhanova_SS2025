@@ -47,9 +47,15 @@ class QueryPronounsResolver:
         return resolved
 
     def _replace_pronouns(self, text: str, entity: str) -> str:
-        if not entity:
-            return text
-        return re.sub(r'\b(he|she|they|it|his|her|their)\b', entity, text, flags=re.IGNORECASE)
+        replacements = {
+            r'\bhe\b': self.context.get("male"),
+            r'\bshe\b': self.context.get("female"),
+            r'\bit\b': self.context.get("neutral"),
+            r'\bthey\b': self.context.get("last"),
+            r'\bhis\b': self._possessive_form(self.context.get("male")),
+            r'\bher\b': self._possessive_form(self.context.get("female")),
+            r'\btheir\b': self._possessive_form(self.context.get("last")),
+        }
 
     def _extract_named_entity(self, text: str) -> str:
         # Extracts first occurrence of a capitalized name-like phrase
