@@ -27,11 +27,9 @@ class QueryPronounsResolver:
 
         for i, sq in enumerate(subqueries):
             logger.debug(f"Processing subquery {i}: '{sq}'")
+
             if i > 0:
-                entity = self._last_valid_entity(known_entities)
-                if entity:
-                    sq = self._replace_pronouns(sq, entity)
-                    logger.debug(f"Replaced pronouns with entity '{entity}': '{sq}'")
+                sq = self._replace_pronouns(sq)
 
             entity = self._extract_named_entity(sq)
             if entity:
