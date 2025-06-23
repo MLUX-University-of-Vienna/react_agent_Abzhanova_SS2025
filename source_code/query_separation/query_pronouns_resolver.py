@@ -87,4 +87,4 @@ class QueryPronounsResolver:
         
         return None
     
-    def _extract_named_entity(self, text: str) -> Optional[str]:
+    def _guess_gender(self, entity: str) -> Optional[str]:
