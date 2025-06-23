@@ -9,6 +9,14 @@ handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 logger.addHandler(handler)
 
 class QueryPronounsResolver:
+    def __init__(self):
+        self.context = {
+            "male": None,
+            "female": None,
+            "neutral": None,
+            "last": None,
+        }
+
     def resolve(self, subqueries: List[str]) -> List[str]:
         """Resolves pronouns in each subquery based on the nearest named entity found in previous subqueries"""
         if not subqueries:
