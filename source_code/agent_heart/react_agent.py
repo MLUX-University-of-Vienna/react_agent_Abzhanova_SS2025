@@ -1,3 +1,4 @@
+import re
 from typing import Dict, List
 import logging
 
@@ -12,7 +13,6 @@ from task_management.task_manager import TaskManager
 
 from agent_memory.conversation_memory import ConversationMemory
 from agent_memory.query_memory import QueryMemory
-from agent_memory.query_pronouns_resolver import QueryPronounsResolver
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -21,10 +21,13 @@ handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 logger.addHandler(handler)
 
 class ReActAgent:
-    def __init__(self, query_separator_llm: LLMInterface, tool_selector_llm: LLMInterface, answer_generator_llm: LLMInterface, confidence_assessor_llm: LLMInterface, tools: Dict[str, AgentTool]):
+    def __init__(self, query_separator_llm: LLMInterface, tool_selector_llm: LLMInterface,
+                 answer_generator_llm: LLMInterface, confidence_assessor_llm: LLMInterface,
+                 tools: Dict[str, AgentTool]):
         self.separator = LLMLogicalSeparationStrategy(query_separator_llm)
-        self.selector  = RegexPatternToolSelector(tool_selector_llm)
-        self.task_manager = TaskManager(tool_selector_llm, answer_generator_llm, confidence_assessor_llm, tools, self.selector)
+        self.selector = RegexPatternToolSelector(tool_selector_llm)
+        self.task_manager = TaskManager(tool_selector_llm, answer_generator_llm,
+                                        confidence_assessor_llm, tools, self.selector)
         self.answer_generator_llm = answer_generator_llm
 
         self.conversation_memory = ConversationMemory()
@@ -34,43 +37,35 @@ class ReActAgent:
         logger.info(f"Received query: {query}")
         self.query_memory.start_new(query)
 
-        if contains_pronouns(query):
-            resolved_query = self.query_memory.resolve_pronouns(query)
-            if resolved_query == query:
-                resolved_query = self.conversation_memory.resolve_pronouns(query)
-                logger.debug("Pronouns resolved using conversation memory.")
-            else:
-                logger.debug("Pronouns resolved using query memory.")
-        else:
-            resolved_query = query
-
-        subqueries = self._separate_query(resolved_query)
+        # No full query resolution here anymore — subqueries will be resolved later
+        subqueries = self._separate_query(query)
         results = self._answer_subqueries(subqueries)
         final_answer = self._aggregate_answers(query, results)
 
         logger.info(f"Final aggregated answer: {final_answer}")
         self.conversation_memory.update(query, final_answer)
-
         return final_answer
-
-
 
     def _separate_query(self, query: str) -> List[str]:
         subqs = self.separator.separate(query)
         logger.debug(f"Separated into {len(subqs)} subquery(ies): {subqs}")
-
-        resolver = QueryPronounsResolver()
-        resolved_subqs = resolver.resolve(subqs)
-        logger.debug(f"Resolved subqueries: {resolved_subqs}")
-        return resolved_subqs
-
+        return subqs  # Raw subqueries only — resolution is delayed
+       
     def _answer_subqueries(self, subqueries: List[str]) -> List[Dict[str, str]]:
         results = []
         for sq in subqueries:
-            resolved_sq = self.conversation_memory.resolve_pronouns(sq)
-            resolved_sq = sq
-            logger.info(f"Handling subquery: {resolved_sq}")
+            # Resolve pronouns just-in-time
+            if self._contains_pronouns(sq):
+                resolved_sq = self.query_memory.resolve_pronouns(sq)
+                if resolved_sq == sq:
+                    resolved_sq = self.conversation_memory.resolve_pronouns(sq)
+                    logger.debug("Pronouns resolved using conversation memory.")
+                else:
+                    logger.debug("Pronouns resolved using query memory.")
+            else:
+                resolved_sq = sq
 
+            logger.info(f"Handling subquery: {resolved_sq}")
             result = self.task_manager.run(resolved_sq)
 
             if "final_answer" in result:
@@ -84,8 +79,8 @@ class ReActAgent:
                 answer = "[No answer produced]"
                 logger.error("Unexpected result structure from task manager")
 
+            # Save to memory for future pronoun resolution
             self.query_memory.add_subquery(resolved_sq, answer)
-
             self.conversation_memory.update(resolved_sq, answer)
 
             results.append({"question": resolved_sq, "answer": answer})
@@ -103,6 +98,6 @@ class ReActAgent:
         )
         return self.answer_generator_llm.generate(agg_prompt).strip()
 
-    def _contains_pronouns(text: str) -> bool:
+    def _contains_pronouns(self, text: str) -> bool:
         pronouns = r'\b(he|she|it|they|his|her|their)\b'
         return re.search(pronouns, text, flags=re.IGNORECASE) is not None
