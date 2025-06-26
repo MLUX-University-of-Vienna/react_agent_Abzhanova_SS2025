@@ -1,11 +1,11 @@
 from typing import List, Tuple
-from .query_pronouns_resolver import QueryPronounsResolver
+from .pronouns_resolver import PronounsResolver
 
 class QueryMemory:
     def __init__(self):
         self.query: str = ""
         self.subqueries: List[Tuple[str, str]] = []
-        self.pronoun_resolver = QueryPronounsResolver()
+        self.pronoun_resolver = PronounsResolver()
 
     def start_new(self, query: str):
         self.query = query
