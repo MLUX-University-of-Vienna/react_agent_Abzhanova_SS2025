@@ -26,7 +26,6 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
             "- Use field(entity) expressions, joined by logical operators: ∧ (and), ∨ (or), ¬ (not)\n"
             "- Be strict: only represent what is explicitly asked.\n"
             "- Do not infer or expand the question.\n"
-            "- Ensure the DSL is self-contained and unambiguous.\n"
             f"User query: '{query}'\n"
             "Output only DSL expressions — no bullets, markdown, or explanation:"
         )
@@ -55,6 +54,7 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
             "- Each line in the DSL corresponds to one question.\n"
             "- Do not combine or merge them.\n"
             "- Keep output simple: one question per line, no numbering or formatting.\n"
+            f"Original query: {query}\n\n"
             f"DSL:\n{dsl_block}\n"
             "Questions:"
         )
