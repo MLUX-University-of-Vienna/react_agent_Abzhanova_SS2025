@@ -14,17 +14,22 @@ class PronounsResolver:
             "male": None,
             "female": None,
             "neutral": None,
-            "last": None,
+            "last": None,          
+            "last_answer": None,  
+            "last_numeric": None, 
         }
 
-    def resolve(self, subqueries: List[str]) -> List[str]:
-        """Resolves pronouns in each subquery based on the nearest named entity found in previous subqueries"""
+    def resolve(self, subqueries: List[str], prior_answers: Optional[List[str]] = None) -> List[str]:
+        """Resolves pronouns in each subquery using tracked named entities or values from prior answers."""
         if not subqueries:
             logger.debug("No subqueries provided for resolution.")
             return subqueries
 
-        resolved = []
+        if prior_answers:
+            for ans in reversed(prior_answers):
+                self._update_context_from_answer(ans)
 
+        resolved = []
         for i, sq in enumerate(subqueries):
             logger.debug(f"Processing subquery {i}: '{sq}'")
 
@@ -38,8 +43,6 @@ class PronounsResolver:
                 if gender:
                     self.context[gender] = entity
                 self.context["last"] = entity
-            else:
-                logger.debug("No valid named entity found in subquery.")
 
             resolved.append(sq)
 
@@ -47,10 +50,11 @@ class PronounsResolver:
         return resolved
 
     def _replace_pronouns(self, text: str) -> str:
+        last_number = self.context.get("last_numeric")
         replacements = {
             r'\bhe\b': self.context.get("male"),
             r'\bshe\b': self.context.get("female"),
-            r'\bit\b': self.context.get("neutral"),
+            r'\bit\b': last_number if last_number else self.context.get("neutral"),
             r'\bthey\b': self.context.get("last"),
             r'\bhis\b': self._possessive_form(self.context.get("male")),
             r'\bher\b': self._possessive_form(self.context.get("female")),
@@ -59,37 +63,45 @@ class PronounsResolver:
 
         for pattern, replacement in replacements.items():
             if replacement:
-                new_text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+                new_text = re.sub(pattern, str(replacement), text, flags=re.IGNORECASE)
                 if new_text != text:
                     logger.debug(f"Replaced '{pattern}' with '{replacement}' in '{text}'")
                     text = new_text
 
+        logger.debug(f"Final transformed query: '{text}'")
         return text
+
 
     def _possessive_form(self, entity: Optional[str]) -> Optional[str]:
         if not entity:
             return None
         return entity + "'" if entity.endswith("s") else entity + "'s"
 
-    def _extract_named_entity(self, text: str) -> str:
+    def _extract_named_entity(self, text: str) -> Optional[str]:
         match = re.search(
             r"(?:the\s)?(?:name of\s)?((?:president|king|queen|prime minister|CEO|founder|director) of [A-Z][a-zA-Z]+(?:\s[A-Z][a-zA-Z]+)*)",
             text, re.IGNORECASE
         )
         if match:
-            entity = match.group(1).strip()
-            return entity
+            return match.group(1).strip()
 
         tokens = re.findall(r"\b[A-Z][a-z]+\b(?:\s[A-Z][a-z]+\b)*", text)
         for token in tokens:
             if token.lower() not in {"what", "how", "who", "where", "when", "why"}:
                 return token.strip()
-        
+
         return None
-    
+
+    def _update_context_from_answer(self, answer: str):
+        self.context["last_answer"] = answer
+        match = re.search(r'\b\d+(?:\.\d+)?\b', answer)
+        if match:
+            self.context["last_numeric"] = match.group(0)
+            logger.debug(f"Extracted numeric value '{match.group(0)}' from answer for future reference.")
+
     def _guess_gender(self, entity: str) -> Optional[str]:
-        if re.search(r'\bpresident|king|man|Mr\.\b', entity, re.IGNORECASE):
+        if re.search(r'\b(president|king|man|Mr\.)\b', entity, re.IGNORECASE):
             return "male"
-        if re.search(r'\bqueen|woman|Mrs\.|Ms\.\b', entity, re.IGNORECASE):
+        if re.search(r'\b(queen|woman|Mrs\.|Ms\.)\b', entity, re.IGNORECASE):
             return "female"
         return "neutral"

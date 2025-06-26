@@ -80,16 +80,26 @@ class CalculatorTool(AgentTool):
 
     def _preprocess_expression(self, expr: str) -> str:
         try:
+            expr = expr.lower().strip().rstrip("?.")
+
+            expr = re.sub(r'multiply\s+(\d+)\s+(by|with)\s+(\d+)', r'\1*\3', expr)
+            expr = re.sub(r'add\s+(\d+)\s+(and|to)\s+(\d+)', r'\1+\3', expr)
+            expr = re.sub(r'subtract\s+(\d+)\s+from\s+(\d+)', r'\2-\1', expr)
+            expr = re.sub(r'divide\s+(\d+)\s+by\s+(\d+)', r'\1/\2', expr)
+
             expr = re.sub(r'(\d+)%\s*of\s*(\d+)', r'(\1/100)*\2', expr)
             expr = re.sub(r'(\d+)%', r'(\1/100)', expr)
             expr = expr.replace('^', '**')
             expr = re.sub(r'sqrt\(([^)]+)\)', r'math.sqrt(\1)', expr)
             expr = re.sub(r'(\d+)!', r'math.factorial(\1)', expr)
-            cleaned_expr = re.sub(r'[^a-zA-Z0-9+\-*/(). sqrt!]', '', expr)
+
+            cleaned_expr = re.sub(r'[^a-zA-Z0-9+\-*/(). _]', '', expr)
             return cleaned_expr
+
         except Exception as e:
             logging.error(f"Expression preprocessing failed: {str(e)}")
             raise ValueError(f"Expression preprocessing failed: {str(e)}")
+
 
     def _is_safe_expression(self, expr: str) -> bool:
         try:
