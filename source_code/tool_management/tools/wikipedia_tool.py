@@ -3,7 +3,9 @@ import logging
 from typing import Optional
 import wikipedia        
 import wikipediaapi
+
 from .agent_tool import AgentTool, ToolResponse
+
 
 class WikipediaTool(AgentTool):
     def __init__(self, user_agent: str = "AIResearchBot/1.0 (research@example.org)"):
@@ -40,7 +42,6 @@ class WikipediaTool(AgentTool):
         r'\b(biography|invention|discovery|theory|concept)\b'
     ]
 
-
     _examples = """User: Who invented Python?
 {
   "thought": "This is a historical fact",
@@ -51,29 +52,34 @@ class WikipediaTool(AgentTool):
 
     def execute(self, query: str) -> ToolResponse:
         self.logger.info(f"Starting Wikipedia search for query: {query}")
-
         try:
-            search_term = query 
-            if not search_term or not search_term.strip():
+            search_term = self._prepare_search_term(query)
+            if not search_term:
                 return ToolResponse(content="No query provided.", success=False)
 
-            results = wikipedia.search(search_term)
+            results = self._search_wikipedia(search_term)
             if not results:
                 return ToolResponse(content=f"No Wikipedia articles found for '{search_term}'", success=True)
 
-            page_title = results[0]
-            page = wikipedia.page(page_title)  
-            summary_text = page.summary
-            
-            if len(summary_text) > 500:
-                summary_text = summary_text[:500] + "..."
-
-            result_data = f"Title: {page.title}\nSummary: {summary_text}"
-            return ToolResponse(content=result_data, success=True)
+            summary = self._get_summary_from_page(results[0])
+            return ToolResponse(content=summary, success=True)
 
         except Exception as e:
             self.logger.error(f"Wikipedia search failed: {e}")
             return ToolResponse(content=f"Error accessing Wikipedia: {e}", success=False)
+
+    def _prepare_search_term(self, query: str) -> str:
+        return query.strip()
+
+    def _search_wikipedia(self, term: str) -> list:
+        return wikipedia.search(term)
+
+    def _get_summary_from_page(self, page_title: str) -> str:
+        page = wikipedia.page(page_title)
+        summary = page.summary
+        if len(summary) > self.max_summary_length:
+            summary = summary[:self.max_summary_length] + "..."
+        return f"Title: {page.title}\nSummary: {summary}"
 
     @classmethod
     def get_patterns(cls):

@@ -1,17 +1,26 @@
 import re
 import math
 import logging
-import ast 
-from typing import Dict, Any, Optional
+import ast
+from typing import Dict, Any, Optional, Union
+
 from .agent_tool import AgentTool, ToolResponse
 
 class CalculatorTool(AgentTool):
+    MAX_LENGTH = 100
+    SAFE_FUNCTIONS = {"sqrt", "factorial"}
+    ALLOWED_AST_NODES = (
+        ast.Expression, ast.BinOp, ast.UnaryOp, ast.Constant,
+        ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow, ast.Mod,
+        ast.USub, ast.UAdd, ast.Load, ast.Call, ast.Attribute, ast.Name
+    )
+
     @property
-    def name(self):
+    def name(self) -> str:
         return "calculator"
-    
+
     @property
-    def description(self): 
+    def description(self) -> str:
         return """Performs mathematical calculations. Supports:
         - Basic operations: +, -, *, /
         - Exponentiation: ^ or **
@@ -22,16 +31,13 @@ class CalculatorTool(AgentTool):
 
     _math_patterns = [
         r'\b(calculate|calculating|calculation|compute|computing|solve|evaluate|work out|figure out|simplify)\b',
-
         r'\bwhat (is|are|would be|could be|is the|is the result of)\b.*\b(sum|difference|product|quotient|value|answer|result|total)\b',
-
-        r'\bhow (much|many|long|far|fast|tall)\b.*[\d+\-*/%^]',  
-
+        r'\bhow (much|many|long|far|fast|tall)\b.*[\d+\-*/%^]',
         r'[-+*/%^=()]+',
         r'\b\d+\s*[-+*/^%]\s*\d+\b',
-        r'\d+!?|\b!?\d+\b',    
-        r'\bsqrt\(|√\d+',           
-        r'\b\d+\s*(\^|\*\*)\s*\d+\b' 
+        r'\d+!?|\b!?\d+\b',
+        r'\bsqrt\(|√\d+',
+        r'\b\d+\s*(\^|\*\*)\s*\d+\b'
     ]
 
     _examples = """User: What is (15*3 + 2)/5?
@@ -42,6 +48,36 @@ class CalculatorTool(AgentTool):
   "final_answer": ""
 }"""
 
+    def execute(self, input_expr: str) -> ToolResponse:
+        logging.info(f"Original expression: {input_expr}")
+
+        validation_error = self._validate_expression(input_expr)
+        if validation_error:
+            return ToolResponse(content=validation_error, success=False)
+
+        try:
+            processed_expr = self._preprocess_expression(input_expr)
+            logging.info(f"Processed expression: {processed_expr}")
+
+            if not self._is_safe_expression(processed_expr):
+                raise ValueError("Invalid or unsafe operations detected")
+
+            result = self._evaluate_expression(processed_expr)
+            logging.info(f"Calculation result: {result}")
+            return ToolResponse(content=str(result), success=True)
+
+        except Exception as e:
+            logging.warning(f"Calculation failed for '{input_expr}': {str(e)}")
+            return ToolResponse(content=f"Error: {str(e)}", success=False)
+
+    def _validate_expression(self, expr: str) -> Optional[str]:
+        expr = expr.strip()
+        if not expr:
+            return "Error: Empty expression"
+        if len(expr) > self.MAX_LENGTH:
+            return "Error: Expression too long"
+        return None
+
     def _preprocess_expression(self, expr: str) -> str:
         try:
             expr = re.sub(r'(\d+)%\s*of\s*(\d+)', r'(\1/100)*\2', expr)
@@ -50,73 +86,41 @@ class CalculatorTool(AgentTool):
             expr = re.sub(r'sqrt\(([^)]+)\)', r'math.sqrt(\1)', expr)
             expr = re.sub(r'(\d+)!', r'math.factorial(\1)', expr)
             cleaned_expr = re.sub(r'[^a-zA-Z0-9+\-*/(). sqrt!]', '', expr)
-            logging.debug(f"Preprocessed expression: {cleaned_expr}")
             return cleaned_expr
         except Exception as e:
             logging.error(f"Expression preprocessing failed: {str(e)}")
             raise ValueError(f"Expression preprocessing failed: {str(e)}")
 
     def _is_safe_expression(self, expr: str) -> bool:
-        allowed_nodes = (
-            ast.Expression, ast.BinOp, ast.UnaryOp, ast.Constant,
-            ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow, ast.Mod,
-            ast.USub, ast.UAdd, ast.Load, ast.Call, ast.Attribute, ast.Name
-        )
         try:
             tree = ast.parse(expr, mode='eval')
             for node in ast.walk(tree):
-                if not isinstance(node, allowed_nodes):
-                    if isinstance(node, ast.Attribute):
-                        if node.attr in ['sqrt', 'factorial']:
-                            continue
-                    logging.warning(f"Disallowed node detected: {node}")
-                    return False
                 if isinstance(node, ast.Attribute):
-                    if not hasattr(math, node.attr):
-                        logging.warning(f"Unauthorized attribute access detected: {node.attr}")
+                    if node.attr not in self.SAFE_FUNCTIONS:
+                        logging.warning(f"Unauthorized function: {node.attr}")
                         return False
+                elif not isinstance(node, self.ALLOWED_AST_NODES):
+                    logging.warning(f"Disallowed node detected: {type(node).__name__}")
+                    return False
             return True
         except Exception:
             logging.error("AST parsing failed, unsafe expression detected.")
             return False
 
-    def execute(self, input_expr: str) -> ToolResponse:
-        try:
-            logging.info(f"Original expression: {input_expr}")
-            
-            if not input_expr or not input_expr.strip():
-                logging.warning("Received empty expression.")
-                return ToolResponse(content="Error: Empty expression", success=False)
-            
-            if len(input_expr) > 100:
-                logging.warning("Expression exceeds maximum allowed length.")
-                return ToolResponse(content="Error: Expression too long", success=False)
-            
-            processed_expr = self._preprocess_expression(input_expr)
-            logging.info(f"Processed expression: {processed_expr}")
-            
-            if not self._is_safe_expression(processed_expr):
-                raise ValueError("Invalid or unsafe operations detected")
-            
-            safe_globals = {'math': math}
-            result = eval(processed_expr, {'__builtins__': None}, safe_globals)
-            
-            if isinstance(result, float):
-                result = round(result, 10)
-                if result.is_integer():
-                    result = int(result)
-            
-            logging.info(f"Calculation result: {result}")
-            return ToolResponse(content=str(result), success=True)
-            
-        except Exception as e:
-            logging.warning(f"Calculation failed for '{input_expr}': {str(e)}")
-            return ToolResponse(content=f"Error: {str(e)}", success=False)
+    def _evaluate_expression(self, expr: str) -> Union[int, float]:
+        safe_globals = {'math': math}
+        result = eval(expr, {'__builtins__': None}, safe_globals)
+
+        if isinstance(result, float):
+            result = round(result, 10)
+            if result.is_integer():
+                result = int(result)
+        return result
 
     @classmethod
     def get_patterns(cls):
         return cls._math_patterns
-    
+
     @classmethod
     def get_examples(cls):
         return cls._examples

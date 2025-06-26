@@ -1,6 +1,6 @@
 import logging
 from typing import List, Dict, Optional
-from serpapi.google_search import GoogleSearch  # Correct import
+from serpapi.google_search import GoogleSearch 
 from tool_management.tools.agent_tool import AgentTool, ToolResponse
 
 class SerpAPITool(AgentTool):

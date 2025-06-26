@@ -33,7 +33,7 @@ class ConversationMemory:
     def _find_entity(self, text: str, gender: str = None) -> str:
         matches = re.findall(r"([A-Z][a-z]+(?:\s[A-Z]\.)?(?:\s[A-Z][a-z]+)+)", text)
         if matches:
-            return matches[0]  # Return the first matched name
+            return matches[0]  
         return ""
         
 

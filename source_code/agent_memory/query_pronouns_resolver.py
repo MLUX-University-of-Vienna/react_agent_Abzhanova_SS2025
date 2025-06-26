@@ -46,7 +46,7 @@ class QueryPronounsResolver:
         logger.debug(f"Resolved subqueries: {resolved}")
         return resolved
 
-    def _replace_pronouns(self, text: str, entity: str) -> str:
+    def _replace_pronouns(self, text: str) -> str:
         replacements = {
             r'\bhe\b': self.context.get("male"),
             r'\bshe\b': self.context.get("female"),
