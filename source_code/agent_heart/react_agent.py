@@ -93,3 +93,7 @@ class ReActAgent:
             f"\"{original_query}\"\n\nAnswer:"
         )
         return self.answer_generator_llm.generate(agg_prompt).strip()
+
+    def _contains_pronouns(text: str) -> bool:
+        pronouns = r'\b(he|she|it|they|his|her|their)\b'
+        return re.search(pronouns, text, flags=re.IGNORECASE) is not None
