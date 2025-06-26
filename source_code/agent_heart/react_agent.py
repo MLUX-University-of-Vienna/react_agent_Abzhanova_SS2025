@@ -32,9 +32,17 @@ class ReActAgent:
 
     def handle(self, query: str) -> str:
         logger.info(f"Received query: {query}")
+        self.query_memory.start_new(query)
 
-        resolved_query = self.conversation_memory.resolve_pronouns(query)
-        self.query_memory.start_new(resolved_query)
+        if contains_pronouns(query):
+            resolved_query = self.query_memory.resolve_pronouns(query)
+            if resolved_query == query:
+                resolved_query = self.conversation_memory.resolve_pronouns(query)
+                logger.debug("Pronouns resolved using conversation memory.")
+            else:
+                logger.debug("Pronouns resolved using query memory.")
+        else:
+            resolved_query = query
 
         subqueries = self._separate_query(resolved_query)
         results = self._answer_subqueries(subqueries)
@@ -44,6 +52,7 @@ class ReActAgent:
         self.conversation_memory.update(query, final_answer)
 
         return final_answer
+
 
 
     def _separate_query(self, query: str) -> List[str]:
