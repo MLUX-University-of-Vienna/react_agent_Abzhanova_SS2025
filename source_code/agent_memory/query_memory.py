@@ -19,3 +19,7 @@ class QueryMemory:
         prior = [f"Q: {q}\nA: {a}" for q, a in self.subqueries if q != subquery]
         return "\n".join(prior[-3:])
 
+    def resolve_pronouns(self, subquery: str) -> str:
+        resolved = self.pronoun_resolver.resolve(["", subquery])
+        return resolved[-1]
+
