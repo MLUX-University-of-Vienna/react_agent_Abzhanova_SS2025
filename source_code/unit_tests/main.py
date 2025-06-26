@@ -65,7 +65,7 @@ def main():
     )
 
     test_cases: List[Tuple[str, str]] = [
-        ("Who is the president of USA and how old is he?", "web_search"),
+        ("Who is the president of USA, how old is he and multiply it with 4?", "web_search"),
     ]
 
     for query, expected in test_cases:

@@ -37,7 +37,6 @@ class ReActAgent:
         logger.info(f"Received query: {query}")
         self.query_memory.start_new(query)
 
-        # No full query resolution here anymore — subqueries will be resolved later
         subqueries = self._separate_query(query)
         results = self._answer_subqueries(subqueries)
         final_answer = self._aggregate_answers(query, results)
@@ -49,19 +48,18 @@ class ReActAgent:
     def _separate_query(self, query: str) -> List[str]:
         subqs = self.separator.separate(query)
         logger.debug(f"Separated into {len(subqs)} subquery(ies): {subqs}")
-        return subqs  # Raw subqueries only — resolution is delayed
+        return subqs
        
     def _answer_subqueries(self, subqueries: List[str]) -> List[Dict[str, str]]:
         results = []
         for sq in subqueries:
-            # Resolve pronouns just-in-time
             if self._contains_pronouns(sq):
                 resolved_sq = self.query_memory.resolve_pronouns(sq)
                 if resolved_sq == sq:
                     resolved_sq = self.conversation_memory.resolve_pronouns(sq)
-                    logger.debug("Pronouns resolved using conversation memory.")
+                    logger.debug("Pronouns resolved using conversation memory")
                 else:
-                    logger.debug("Pronouns resolved using query memory.")
+                    logger.debug("Pronouns resolved using query memory")
             else:
                 resolved_sq = sq
 
@@ -79,7 +77,6 @@ class ReActAgent:
                 answer = "[No answer produced]"
                 logger.error("Unexpected result structure from task manager")
 
-            # Save to memory for future pronoun resolution
             self.query_memory.add_subquery(resolved_sq, answer)
             self.conversation_memory.update(resolved_sq, answer)
 

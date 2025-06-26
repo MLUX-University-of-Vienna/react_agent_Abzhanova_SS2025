@@ -8,7 +8,7 @@ handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 logger.addHandler(handler)
 
-class QueryPronounsResolver:
+class PronounsResolver:
     def __init__(self):
         self.context = {
             "male": None,
