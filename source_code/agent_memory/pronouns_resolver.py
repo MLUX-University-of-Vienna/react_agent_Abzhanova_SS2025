@@ -94,10 +94,37 @@ class PronounsResolver:
 
     def _update_context_from_answer(self, answer: str):
         self.context["last_answer"] = answer
-        match = re.search(r'\b\d+(?:\.\d+)?\b', answer)
-        if match:
-            self.context["last_numeric"] = match.group(0)
-            logger.debug(f"Extracted numeric value '{match.group(0)}' from answer for future reference.")
+
+        if "numeric_candidates" not in self.context:
+            self.context["numeric_candidates"] = []
+
+        numbers = re.findall(r'\b\d{1,4}\b', answer)
+        for num in numbers:
+            num = num.strip()
+            if not num:
+                continue
+
+            score = 0
+            lowered = answer.lower()
+            if re.fullmatch(r'\d+', answer.strip()):
+                score += 3  # pure number, likely direct answer
+            if "age" in lowered or "years old" in lowered:
+                score += 3
+            if "born" in lowered or "birth" in lowered or "year" in lowered:
+                score -= 1  # less relevant than direct age
+            if int(num) < 1900 or int(num) > 2100:
+                score += 1  # likely an actual answer, not a year
+
+            # Save with score and answer context
+            self.context["numeric_candidates"].append((num, score, answer.strip()))
+
+        # Keep top scoring one
+        if self.context["numeric_candidates"]:
+            sorted_candidates = sorted(self.context["numeric_candidates"], key=lambda x: -x[1])
+            best_num = sorted_candidates[0][0]
+            self.context["last_numeric"] = best_num
+            logger.debug(f"[Smart resolver] Selected numeric: {best_num} (from: '{sorted_candidates[0][2]}')")
+
 
     def _guess_gender(self, entity: str) -> Optional[str]:
         if re.search(r'\b(president|king|man|Mr\.)\b', entity, re.IGNORECASE):

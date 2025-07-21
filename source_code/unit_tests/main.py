@@ -48,6 +48,7 @@ def run_test_case(agent: ReActAgent, query: str, expected_tool: str):
     print("=" * 80 + "\n")
 
 def main():
+    configure_logging()
 
     query_separator_llm = GemmaInterface(model="gemma3:4b", temperature=0.1)
     tool_selector_llm = GemmaInterface(model="gemma3:4b", temperature=0.1)
@@ -64,12 +65,19 @@ def main():
         tools=tools
     )
 
-    test_cases: List[Tuple[str, str]] = [
-        ("Who is the president of USA, how old is he and multiply it with 4?", "web_search"),
-    ]
+    print("\n ReAct Agent Chat. Type 'exit' or 'quit' to stop.\n")
 
-    for query, expected in test_cases:
-        run_test_case(agent, query, expected)
+    while True:
+        user_input = input("You: ").strip()
+        if user_input.lower() in {"exit", "quit"}:
+            print("Goodbye!")
+            break
+        if not user_input:
+            continue  # skip empty input
+
+        response = agent.handle(user_input)
+        print(f"Agent: {response}\n")
+
 
 if __name__ == "__main__":
     main()
