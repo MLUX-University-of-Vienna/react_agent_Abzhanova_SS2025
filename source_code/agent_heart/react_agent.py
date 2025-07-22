@@ -35,7 +35,7 @@ class ReActAgent:
 
     def handle(self, query: str) -> str:
         logger.info(f"Received query: {query}")
-        self.query_memory.start_new(query)
+        self.query_memory.start_new(query) 
 
         subqueries = self._separate_query(query)
         results = self._answer_subqueries(subqueries)
