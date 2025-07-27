@@ -13,6 +13,8 @@ from task_management.task_manager import TaskManager
 
 from agent_memory.conversation_memory import ConversationMemory
 from agent_memory.query_memory import QueryMemory
+from agent_memory.pronouns_resolution.pronouns_resolver import PronounsResolver
+from agent_memory.pronouns_resolution.entity_extractor import EntityExtractor
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -23,15 +25,19 @@ logger.addHandler(handler)
 class ReActAgent:
     def __init__(self, query_separator_llm: LLMInterface, tool_selector_llm: LLMInterface,
                  answer_generator_llm: LLMInterface, confidence_assessor_llm: LLMInterface,
-                 tools: Dict[str, AgentTool]):
+                 entity_extractor: EntityExtractor, tools: Dict[str, AgentTool]):
         self.separator = LLMLogicalSeparationStrategy(query_separator_llm)
         self.selector = RegexPatternToolSelector(tool_selector_llm)
         self.task_manager = TaskManager(tool_selector_llm, answer_generator_llm,
                                         confidence_assessor_llm, tools, self.selector)
         self.answer_generator_llm = answer_generator_llm
 
-        self.conversation_memory = ConversationMemory()
-        self.query_memory = QueryMemory()
+        self.conversation_memory = ConversationMemory(
+            pronouns_resolver=PronounsResolver(entity_extractor)
+        )
+        self.query_memory = QueryMemory(
+            pronouns_resolver=PronounsResolver(entity_extractor)
+        )
 
     def handle(self, query: str) -> str:
         logger.info(f"Received query: {query}")

@@ -12,6 +12,9 @@ from tool_management.tools.serpapi_tool import SerpAPITool
 from tool_management.tools.wikipedia_tool import WikipediaTool
 from tool_management.tools.vector_search_tool import VectorSearchTool
 
+from agent_memory.pronouns_resolution.spacy_entity_extractor import SpacyEntityExtractor
+from agent_memory.pronouns_resolution.pronouns_resolver import PronounsResolver
+
 from agent_heart.react_agent import ReActAgent
 
 def configure_logging():
@@ -57,11 +60,15 @@ def main():
 
     tools = create_tools()
 
+    entity_extractor = SpacyEntityExtractor()
+    resolver = PronounsResolver(entity_extractor)
+
     agent = ReActAgent(
         query_separator_llm=query_separator_llm,
         tool_selector_llm=tool_selector_llm,
         answer_generator_llm=answer_generator_llm,
         confidence_assessor_llm=confidence_assessor_llm,
+        entity_extractor=entity_extractor,
         tools=tools
     )
 

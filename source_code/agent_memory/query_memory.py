@@ -1,11 +1,11 @@
 from typing import List, Tuple
-from .pronouns_resolver import PronounsResolver
+from agent_memory.pronouns_resolution.pronouns_resolver import PronounsResolver
 
 class QueryMemory:
-    def __init__(self):
+    def __init__(self, pronouns_resolver: PronounsResolver):
         self.query: str = ""
         self.subqueries: List[Tuple[str, str]] = []
-        self.pronoun_resolver = PronounsResolver()
+        self.pronouns_resolver = pronouns_resolver
 
     def start_new(self, query: str):
         self.query = query
@@ -23,7 +23,7 @@ class QueryMemory:
 
     def resolve_pronouns(self, subquery: str) -> str:
         prior_answers = [a for _, a in self.subqueries]
-        resolved = self.pronoun_resolver.resolve(["", subquery], prior_answers=prior_answers)
+        resolved = self.pronouns_resolver.resolve(["", subquery], prior_answers=prior_answers)
         return resolved[-1]
 
 

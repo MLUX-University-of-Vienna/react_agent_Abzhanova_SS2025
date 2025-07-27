@@ -2,14 +2,14 @@ from typing import List, Dict
 import logging
 import re
 
-from .pronouns_resolver import PronounsResolver
+from agent_memory.pronouns_resolution.pronouns_resolver import PronounsResolver
 
 logger = logging.getLogger(__name__)
 
 class ConversationMemory:
-    def __init__(self):
+    def __init__(self, pronouns_resolver: PronounsResolver):
         self.history: List[Dict[str, str]] = []
-        self.resolver = PronounsResolver()
+        self.pronouns_resolver = pronouns_resolver
 
     def update(self, query: str, answer: str):
         self.history.append({"query": query, "answer": answer})
@@ -23,7 +23,7 @@ class ConversationMemory:
 
     def resolve_pronouns(self, text: str) -> str:
         prior_answers = [entry["answer"] for entry in self.history]
-        resolved = self.resolver.resolve(["", text], prior_answers=prior_answers)
+        resolved = self.pronouns_resolver.resolve(["", text], prior_answers=prior_answers)
         return resolved[-1]
 
     def _find_entity(self, text: str, gender: str = None) -> str:

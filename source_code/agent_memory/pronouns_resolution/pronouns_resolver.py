@@ -1,7 +1,7 @@
 import re
 import logging
 from typing import List, Optional
-from ..pronouns_resolution.pronouns_resolver import EntityExtractor
+from .entity_extractor import EntityExtractor
 import gender_guesser.detector as gender
 
 logger = logging.getLogger(__name__)
