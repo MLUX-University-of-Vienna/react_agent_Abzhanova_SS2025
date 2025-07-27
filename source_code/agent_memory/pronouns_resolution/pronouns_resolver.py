@@ -2,6 +2,7 @@ import re
 import logging
 from typing import List, Optional
 from ..pronouns_resolution.pronouns_resolver import EntityExtractor
+import gender_guesser.detector as gender
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -117,5 +118,15 @@ class PronounsResolver:
         if re.search(r'\b(president|king|man|Mr\.)\b', entity, re.IGNORECASE):
             return "male"
         if re.search(r'\b(queen|woman|Mrs\.|Ms\.)\b', entity, re.IGNORECASE):
+            return "female"
+        return "neutral"
+
+    def guess_gender(name: str) -> str:
+        gender_detector = gender.Detector()
+        first_name = name.split()[0] 
+        g = gender_detector.get_gender(first_name)
+        if g in ["male", "mostly_male"]:
+            return "male"
+        elif g in ["female", "mostly_female"]:
             return "female"
         return "neutral"
