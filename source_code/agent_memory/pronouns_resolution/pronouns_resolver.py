@@ -80,21 +80,6 @@ class PronounsResolver:
             return None
         return entity + "'" if entity.endswith("s") else entity + "'s"
 
-    def _extract_named_entity(self, text: str) -> Optional[str]:
-        match = re.search(
-            r"(?:the\s)?(?:name of\s)?((?:president|king|queen|prime minister|CEO|founder|director) of [A-Z][a-zA-Z]+(?:\s[A-Z][a-zA-Z]+)*)",
-            text, re.IGNORECASE
-        )
-        if match:
-            return match.group(1).strip()
-
-        tokens = re.findall(r"\b[A-Z][a-z]+\b(?:\s[A-Z][a-z]+\b)*", text)
-        for token in tokens:
-            if token.lower() not in {"what", "how", "who", "where", "when", "why"}:
-                return token.strip()
-
-        return None
-
     def _update_context_from_answer(self, answer: str):
         self.context["last_answer"] = answer
 
