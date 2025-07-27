@@ -10,6 +10,7 @@ handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 logger.addHandler(handler)
 
+
 class PronounsResolver:
     def __init__(self, extractor: EntityExtractor):
         self.extractor = extractor
@@ -25,30 +26,29 @@ class PronounsResolver:
         }
 
     def resolve(self, subqueries: List[str], prior_answers: Optional[List[str]] = None) -> List[str]:
-        """Resolves pronouns in each subquery using tracked named entities or values from prior answers."""
         if not subqueries:
             logger.debug("No subqueries provided for resolution.")
             return subqueries
 
         if prior_answers:
-            for ans in reversed(prior_answers):
-                self._update_context_from_answer(ans)
+            self._update_context_from_answers(prior_answers)
 
+        return self._resolve_subqueries(subqueries)
+
+    def _update_context_from_answers(self, answers: List[str]):
+        for answer in reversed(answers):
+            self._update_context_from_single_answer(answer)
+
+    def _resolve_subqueries(self, subqueries: List[str]) -> List[str]:
         resolved = []
+
         for i, sq in enumerate(subqueries):
             logger.debug(f"Processing subquery {i}: '{sq}'")
 
             if i > 0:
                 sq = self._replace_pronouns(sq)
 
-            entity = self.extractor.extract(sq)
-            if entity:
-                logger.debug(f"Extracted entity: '{entity}'")
-                gender = self._guess_gender(entity)
-                if gender:
-                    self.context[gender] = entity
-                self.context["last"] = entity
-
+            self._update_context_from_query(sq)
             resolved.append(sq)
 
         logger.debug(f"Resolved subqueries: {resolved}")
@@ -75,15 +75,22 @@ class PronounsResolver:
         logger.debug(f"Final transformed query: '{text}'")
         return text
 
+    def _update_context_from_query(self, query: str):
+        entity = self.extractor.extract(query)
+        if entity:
+            logger.debug(f"Extracted entity: '{entity}'")
+            gender = self._guess_gender(entity)
+            if gender:
+                self.context[gender] = entity
+            self.context["last"] = entity
 
-    def _possessive_form(self, entity: Optional[str]) -> Optional[str]:
-        if not entity:
-            return None
-        return entity + "'" if entity.endswith("s") else entity + "'s"
-
-    def _update_context_from_answer(self, answer: str):
+    def _update_context_from_single_answer(self, answer: str):
         self.context["last_answer"] = answer
 
+        self._extract_entity_from_answer(answer)
+        self._extract_numeric_from_answer(answer)
+
+    def _extract_entity_from_answer(self, answer: str):
         entity = self.extractor.extract(answer)
         if entity:
             gender = self._guess_gender(entity)
@@ -92,36 +99,43 @@ class PronounsResolver:
             self.context["last"] = entity
             logger.debug(f"[Smart resolver] Extracted entity from answer: {entity} (gender: {gender})")
 
-        if "numeric_candidates" not in self.context:
-            self.context["numeric_candidates"] = []
-
+    def _extract_numeric_from_answer(self, answer: str):
         numbers = re.findall(r'\b\d{1,4}\b', answer)
         for num in numbers:
-            num = num.strip()
-            if not num:
-                continue
+            self._score_numeric_candidate(num, answer)
 
-            score = 0
-            lowered = answer.lower()
-            if re.fullmatch(r'\d+', answer.strip()):
-                score += 3  # pure number, likely direct answer
-            if "age" in lowered or "years old" in lowered:
-                score += 3
-            if "born" in lowered or "birth" in lowered or "year" in lowered:
-                score -= 1  # less relevant than direct age
-            if int(num) < 1900 or int(num) > 2100:
-                score += 1  # likely an actual answer, not a year
-
-            # Save with score and answer context
-            self.context["numeric_candidates"].append((num, score, answer.strip()))
-
-        # Keep top scoring one
         if self.context["numeric_candidates"]:
-            sorted_candidates = sorted(self.context["numeric_candidates"], key=lambda x: -x[1])
-            best_num = sorted_candidates[0][0]
-            self.context["last_numeric"] = best_num
-            logger.debug(f"[Smart resolver] Selected numeric: {best_num} (from: '{sorted_candidates[0][2]}')")
+            self._select_best_numeric()
 
+    def _score_numeric_candidate(self, num: str, answer: str):
+        num = num.strip()
+        if not num:
+            return
+
+        score = 0
+        lowered = answer.lower()
+
+        if re.fullmatch(r'\d+', num):
+            score += 3
+        if "age" in lowered or "years old" in lowered:
+            score += 3
+        if any(term in lowered for term in ("born", "birth", "year")):
+            score -= 1
+        if int(num) < 1900 or int(num) > 2100:
+            score += 1
+
+        self.context["numeric_candidates"].append((num, score, answer.strip()))
+
+    def _select_best_numeric(self):
+        sorted_candidates = sorted(self.context["numeric_candidates"], key=lambda x: -x[1])
+        best_num = sorted_candidates[0][0]
+        self.context["last_numeric"] = best_num
+        logger.debug(f"[Smart resolver] Selected numeric: {best_num} (from: '{sorted_candidates[0][2]}')")
+
+    def _possessive_form(self, entity: Optional[str]) -> Optional[str]:
+        if not entity:
+            return None
+        return entity + "'" if entity.endswith("s") else entity + "'s"
 
     def _guess_gender(self, entity: str) -> Optional[str]:
         first_name = entity.split()[0]
