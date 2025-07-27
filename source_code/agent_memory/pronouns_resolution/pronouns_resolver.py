@@ -39,7 +39,7 @@ class PronounsResolver:
             if i > 0:
                 sq = self._replace_pronouns(sq)
 
-            entity = self._extract_named_entity(sq)
+            entity = self.extractor.extract(sq)
             if entity:
                 logger.debug(f"Extracted entity: '{entity}'")
                 gender = self._guess_gender(entity)
@@ -53,11 +53,10 @@ class PronounsResolver:
         return resolved
 
     def _replace_pronouns(self, text: str) -> str:
-        last_number = self.context.get("last_numeric")
         replacements = {
             r'\bhe\b': self.context.get("male"),
             r'\bshe\b': self.context.get("female"),
-            r'\bit\b': last_number if last_number else self.context.get("neutral"),
+            r'\bit\b': self.context.get("last_numeric") or self.context.get("neutral"),
             r'\bthey\b': self.context.get("last"),
             r'\bhis\b': self._possessive_form(self.context.get("male")),
             r'\bher\b': self._possessive_form(self.context.get("female")),
