@@ -1,6 +1,7 @@
 import re
 import logging
 from typing import List, Optional
+from ..pronouns_resolution.pronouns_resolver import EntityExtractor
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -9,14 +10,16 @@ handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 logger.addHandler(handler)
 
 class PronounsResolver:
-    def __init__(self):
+    def __init__(self, extractor: EntityExtractor):
+        self.extractor = extractor
         self.context = {
             "male": None,
             "female": None,
             "neutral": None,
-            "last": None,          
-            "last_answer": None,  
-            "last_numeric": None, 
+            "last": None,
+            "last_answer": None,
+            "last_numeric": None,
+            "numeric_candidates": []
         }
 
     def resolve(self, subqueries: List[str], prior_answers: Optional[List[str]] = None) -> List[str]:
