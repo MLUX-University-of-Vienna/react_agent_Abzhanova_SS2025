@@ -13,6 +13,7 @@ logger.addHandler(handler)
 class PronounsResolver:
     def __init__(self, extractor: EntityExtractor):
         self.extractor = extractor
+        self.gender_detector = gender.Detector()
         self.context = {
             "male": None,
             "female": None,
@@ -83,6 +84,14 @@ class PronounsResolver:
     def _update_context_from_answer(self, answer: str):
         self.context["last_answer"] = answer
 
+        entity = self.extractor.extract(answer)
+        if entity:
+            gender = self._guess_gender(entity)
+            if gender:
+                self.context[gender] = entity
+            self.context["last"] = entity
+            logger.debug(f"[Smart resolver] Extracted entity from answer: {entity} (gender: {gender})")
+
         if "numeric_candidates" not in self.context:
             self.context["numeric_candidates"] = []
 
@@ -115,18 +124,10 @@ class PronounsResolver:
 
 
     def _guess_gender(self, entity: str) -> Optional[str]:
-        if re.search(r'\b(president|king|man|Mr\.)\b', entity, re.IGNORECASE):
+        first_name = entity.split()[0]
+        g = self.gender_detector.get_gender(first_name)
+        if g in ("male", "mostly_male"):
             return "male"
-        if re.search(r'\b(queen|woman|Mrs\.|Ms\.)\b', entity, re.IGNORECASE):
-            return "female"
-        return "neutral"
-
-    def guess_gender(name: str) -> str:
-        gender_detector = gender.Detector()
-        first_name = name.split()[0] 
-        g = gender_detector.get_gender(first_name)
-        if g in ["male", "mostly_male"]:
-            return "male"
-        elif g in ["female", "mostly_female"]:
+        elif g in ("female", "mostly_female"):
             return "female"
         return "neutral"
