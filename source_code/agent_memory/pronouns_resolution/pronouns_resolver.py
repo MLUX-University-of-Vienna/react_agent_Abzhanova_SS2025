@@ -2,6 +2,7 @@ import re
 import logging
 from typing import List, Optional
 from .entity_extractor import EntityExtractor
+from .spacy_entity_extractor import SpacyEntityExtractor
 import gender_guesser.detector as gender
 
 logger = logging.getLogger(__name__)
@@ -9,11 +10,10 @@ logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 logger.addHandler(handler)
-
-
+ 
 class PronounsResolver:
     def __init__(self, extractor: EntityExtractor):
-        self.extractor = extractor
+        self.extractor = extractor or SpacyEntityExtractor()
         self.gender_detector = gender.Detector()
         self.context = {
             "male": None,
