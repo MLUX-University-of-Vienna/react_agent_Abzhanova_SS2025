@@ -1,7 +1,7 @@
 import ollama
 from llm.llm_interface import LLMInterface
 
-class OllamaInterface(LLMInterface):
+class DeepseekInterface(LLMInterface):
     def __init__(self, model: str = "deepseek-r1:8b", temperature: float = 0.1):
         self.model = model
         self.temperature = temperature
