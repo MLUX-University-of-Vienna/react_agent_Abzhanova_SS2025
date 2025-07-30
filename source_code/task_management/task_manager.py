@@ -42,12 +42,8 @@ class TaskManager:
 
         self.tool_executor = ToolExecutor(tools)
         self.answer_generator = AnswerGenerator(answer_generator_llm)
-        
-        llm_scorer = LLMConfidenceScorer(confidence_assessor_llm)
-        verifier_tool = SerpAPITool(api_key="b53c73f7ff8666ff176932332e272be8175325eede05c4f1b716cbbccf6103ca")
-        verifier = VerificationScorer(confidence_assessor_llm, verifier_tool)
 
-        self.confidence_assessor = ConfidenceAssessor(llm_scorer)
+        self.confidence_assessor = ConfidenceAssessor(confidence_assessor_llm)
 
 
     def run(self, query: str) -> Dict[str, object]:
