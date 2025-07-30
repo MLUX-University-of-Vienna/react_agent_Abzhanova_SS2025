@@ -9,99 +9,15 @@ from tool_management.tools.serpapi_tool import SerpAPITool
 from .tool_executor import ToolExecutor
 from .answer_generator import AnswerGenerator
 
+from task_management.answer_assessment.llm_confidence_scorer import LLMConfidenceScorer
+from task_management.answer_assessment.verifier_scorer import VerifierScorer
+from task_management.answer_assessment.assessor import ConfidenceAssessor
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG) 
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 logger.addHandler(handler)
-
-class ConfidenceAssessor:
-    def __init__(self, llm: LLMBase):
-        self.llm = llm
-        self.verifier = ResultVerifierViaTool(llm, SerpAPITool(api_key="b53c73f7ff8666ff176932332e272be8175325eede05c4f1b716cbbccf6103ca"))
-
-    def assess(self, query: str, result: str, answer: str) -> float:
-        prompt = f'''You are a confidence grading assistant.
-
-Evaluate the confidence (0.0 to 1.0) in the correctness of the given answer.
-
-Question: {query}
-
-Tool Result:
-{result}
-
-Answer:
-{answer}
-
-Scoring Criteria:
-- Source reliability
-- Information consistency
-- Completeness
-- Recency of information (the tool might be outdated)
-
-Respond ONLY with a number between 0.0 and 1.0 (e.g., 0.85). Do NOT include any text or explanation.
-'''
-
-        try:
-            llm_response = self.llm.generate(prompt).strip()
-            logger.debug(f"Raw LLM confidence output: '{llm_response}'")
-            llm_score = float(llm_response)
-        except Exception as e:
-            logger.debug("Confidence assessment via LLM failed, defaulting to 0.5", exc_info=e)
-            llm_score = 0.5
-
-        if self.verifier:
-            try:
-                verification_question, verification_result = self.verifier.verify(query, answer)
-
-                verifier_prompt = f"""Does the following information support the statement?
-
-Statement: "{answer}"
-Web Result:
-{verification_result}
-
-Answer YES or NO:"""
-
-                response = self.llm.generate(verifier_prompt).strip().lower()
-                verifier_score = 1.0 if "yes" in response else 0.3
-
-            except Exception as e:
-                logger.debug("Verification check failed, defaulting verifier score to 0.5", exc_info=e)
-                verifier_score = 0.5
-
-        else:
-            verifier_score = 0.5
-
-        final_score = round(0.5 * llm_score + 0.5 * verifier_score, 2)
-        logger.debug(
-            f"Confidence assessment summary:\n"
-            f"- LLM Score: {llm_score}\n"
-            f"- Verifier Score: {verifier_score}\n"
-            f"- Final Combined Score: {final_score}"
-        )
-        return final_score
-
-
-class ResultVerifierViaTool:
-    def __init__(self, llm: LLMBase, verifier_tool: AgentTool):
-        self.llm = llm
-        self.verifier_tool = verifier_tool         
-
-    def verify(self, original_query: str, answer: str) -> Tuple[str, str]:
-        prompt = f"""Rephrase the original question into a yes/no question that checks the correctness of this answer.
-
-Original Question: {original_query}
-Answer: {answer}
-
-Verification Question:"""
-
-        verification_question = self.llm.generate(prompt).strip()
-        logger.debug(f"Verification question:\n{verification_question}")
-
-        result = self.verifier_tool.execute(verification_question)
-        logger.debug(f"Verification result:\n{result.content}")
-
-        return verification_question, result.content
 
 class TaskManager:
     def __init__(
