@@ -6,22 +6,13 @@ from tool_management.tools.agent_tool import AgentTool, ToolResponse
 from tool_management.tool_selection.tool_selection_strategy import ToolSelectionStrategy
 from tool_management.tools.serpapi_tool import SerpAPITool
 
+from .tool_executor import ToolExecutor
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG) 
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 logger.addHandler(handler)
-
-class ToolExecutor:
-    def __init__(self, tools: Dict[str, AgentTool]):
-        self.tools = tools
-
-    def execute(self, name: str, query: str) -> str:
-        if name in self.tools:
-            result = self.tools[name].execute(query)
-            return result.content if result.success else f"Tool error: {result.content}"
-        return "Invalid tool"
-
 
 class AnswerGenerator:
     def __init__(self, llm: LLMBase):
