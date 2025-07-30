@@ -59,7 +59,7 @@ class ReActAgent:
     def _answer_subqueries(self, subqueries: List[str]) -> List[Dict[str, str]]:
         results = []
         for subquery in subqueries:
-            if self._contains_pronouns(sq):
+            if self._contains_pronouns(subquery):
                 resolved_subquery = self.query_memory.resolve_pronouns(subquery)
                 if resolved_subquery == subquery:
                     resolved_subquery = self.conversation_memory.resolve_pronouns(subquery)
@@ -69,8 +69,8 @@ class ReActAgent:
             else:
                 resolved_subquery = subquery
 
-            logger.info(f"Handling subquery: {resolved_sq}")
-            result = self.task_manager.run(resolved_sq)
+            logger.info(f"Handling subquery: {resolved_subquery}")
+            result = self.task_manager.run(resolved_subquery)
 
             if "final_answer" in result:
                 raw = result["final_answer"]
@@ -83,10 +83,10 @@ class ReActAgent:
                 answer = "[No answer produced]"
                 logger.error("Unexpected result structure from task manager")
 
-            self.query_memory.add_subquery(resolved_sq, answer)
-            self.conversation_memory.update(resolved_sq, answer)
+            self.query_memory.add_subquery(resolved_subquery, answer)
+            self.conversation_memory.update(resolved_subquery, answer)
 
-            results.append({"question": resolved_sq, "answer": answer})
+            results.append({"question": resolved_subquery, "answer": answer})
         return results
 
     def _aggregate_answers(self, original_query: str, parts: List[Dict[str, str]]) -> str:
