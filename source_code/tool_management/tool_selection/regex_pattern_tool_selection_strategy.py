@@ -1,5 +1,5 @@
 import re
-from llm.llm_interface import LLMInterface
+from llm_adapters.llm_base import LLMBase
 from typing import List, Optional
 from tool_management.tools.agent_tool import AgentTool
 from .tool_selection_strategy import ToolSelectionStrategy
@@ -12,7 +12,7 @@ handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 logger.addHandler(handler)
 
 class RegexPatternToolSelector(ToolSelectionStrategy):
-    def __init__(self, llm: LLMInterface):
+    def __init__(self, llm: LLMBase):
         self.llm = llm
 
     def gather_candidates(self, query: str, tools: dict[str, AgentTool]) -> List[str]:

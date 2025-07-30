@@ -2,7 +2,7 @@ import re
 from typing import Dict, List
 import logging
 
-from llm.llm_interface import LLMInterface
+from llm_adapters.llm_base import LLMBase
 from tool_management.tools.agent_tool import AgentTool
 from tool_management.tool_selection.llm_based_strategy import LLMToolSelectionStrategy
 from tool_management.tool_selection.regex_pattern_tool_selection_strategy import RegexPatternToolSelector
@@ -23,8 +23,8 @@ handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 logger.addHandler(handler)
 
 class ReActAgent:
-    def __init__(self, query_separator_llm: LLMInterface, tool_selector_llm: LLMInterface,
-                 answer_generator_llm: LLMInterface, confidence_assessor_llm: LLMInterface,
+    def __init__(self, query_separator_llm: LLMBase, tool_selector_llm: LLMBase,
+                 answer_generator_llm: LLMBase, confidence_assessor_llm: LLMBase,
                  entity_extractor: EntityExtractor, tools: Dict[str, AgentTool]):
         self.separator = LLMLogicalSeparationStrategy(query_separator_llm)
         self.selector = RegexPatternToolSelector(tool_selector_llm)

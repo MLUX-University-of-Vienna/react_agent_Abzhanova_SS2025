@@ -1,7 +1,7 @@
 import re
 import logging
 from typing import Dict, Optional, Tuple, List
-from llm.llm_interface import LLMInterface
+from llm_adapters.llm_base import LLMBase
 from tool_management.tools.agent_tool import AgentTool, ToolResponse
 from tool_management.tool_selection.tool_selection_strategy import ToolSelectionStrategy
 from tool_management.tools.serpapi_tool import SerpAPITool
@@ -24,7 +24,7 @@ class ToolExecutor:
 
 
 class AnswerGenerator:
-    def __init__(self, llm: LLMInterface):
+    def __init__(self, llm: LLMBase):
         self.llm = llm
 
     def generate(self, query: str, result: str) -> str:
@@ -47,7 +47,7 @@ Final Answer:"""
         return self.llm.generate(prompt).strip()
 
 class ConfidenceAssessor:
-    def __init__(self, llm: LLMInterface):
+    def __init__(self, llm: LLMBase):
         self.llm = llm
         self.verifier = ResultVerifierViaTool(llm, SerpAPITool(api_key="b53c73f7ff8666ff176932332e272be8175325eede05c4f1b716cbbccf6103ca"))
 
@@ -114,7 +114,7 @@ Answer YES or NO:"""
 
 
 class ResultVerifierViaTool:
-    def __init__(self, llm: LLMInterface, verifier_tool: AgentTool):
+    def __init__(self, llm: LLMBase, verifier_tool: AgentTool):
         self.llm = llm
         self.verifier_tool = verifier_tool         
 
@@ -137,9 +137,9 @@ Verification Question:"""
 class TaskManager:
     def __init__(
         self,
-        tool_selector_llm: LLMInterface,
-        answer_generator_llm: LLMInterface,
-        confidence_assessor_llm: LLMInterface,
+        tool_selector_llm: LLMBase,
+        answer_generator_llm: LLMBase,
+        confidence_assessor_llm: LLMBase,
         tools: Dict[str, AgentTool],
         selector: ToolSelectionStrategy,
         confidence_threshold: float = 0.80,

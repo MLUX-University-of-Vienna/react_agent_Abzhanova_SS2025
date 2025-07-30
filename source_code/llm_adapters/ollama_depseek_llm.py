@@ -1,5 +1,5 @@
 import ollama
-from llm.llm_interface import LLMInterface
+from llm_adapters.llm_base import LLMBase
 
 class OllamaDeepseekLLM(LLMBase):
     def __init__(self, model: str = "deepseek-r1:8b", temperature: float = 0.1):

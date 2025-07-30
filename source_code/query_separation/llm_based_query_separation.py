@@ -1,11 +1,11 @@
 import json
 import logging
 from typing import List, Dict
-from llm.llm_interface import LLMInterface
+from llm_adapters.llm_base import LLMBase
 from .query_separation_strategy import QuerySeparationStrategy
 
 class LLMQuerySeparationStrategy(QuerySeparationStrategy):
-    def __init__(self, llm: LLMInterface):
+    def __init__(self, llm: LLMBase):
         self.llm = llm
         self.logger = logging.getLogger(__name__)
 

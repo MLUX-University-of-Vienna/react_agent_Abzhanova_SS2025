@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 from ..tools.agent_tool import AgentTool
-from llm.llm_interface import LLMInterface
+from llm_adapters.llm_base import LLMBase
 
 class ToolSelectionStrategy(ABC):
     @abstractmethod

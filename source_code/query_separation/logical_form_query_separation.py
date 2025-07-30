@@ -3,7 +3,7 @@ import logging
 import re
 from typing import List
 
-from llm.llm_interface import LLMInterface
+from llm_adapters.llm_base import LLMBase
 from .query_separation_strategy import QuerySeparationStrategy
 
 class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
@@ -17,7 +17,7 @@ class LLMLogicalSeparationStrategy(QuerySeparationStrategy):
     handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
     logger.addHandler(handler)
 
-    def __init__(self, llm: LLMInterface):
+    def __init__(self, llm: LLMBase):
         self.llm = llm
 
     def separate(self, query: str) -> List[str]:

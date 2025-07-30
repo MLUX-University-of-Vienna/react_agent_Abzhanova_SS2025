@@ -4,8 +4,8 @@ from typing import Dict, Tuple, List
 
 from pathlib import Path
 
-from llm.ollama.depseek_interface import DepseekInterface
-from llm.gemma_interface import GemmaInterface
+from llm_adapters.ollama_depseek_llm import OllamaDeepseekLLM
+from llm_adapters.ollama_gemma_llm import OllamaGemmaLLM
 
 from tool_management.tools.calculator_tool import CalculatorTool
 from tool_management.tools.serpapi_tool import SerpAPITool
@@ -53,10 +53,10 @@ def run_test_case(agent: ReActAgent, query: str, expected_tool: str):
 def main():
     configure_logging()
 
-    query_separator_llm = GemmaInterface(model="gemma3:4b", temperature=0.1)
-    tool_selector_llm = GemmaInterface(model="gemma3:4b", temperature=0.1)
-    answer_generator_llm = GemmaInterface(model="gemma3:4b", temperature=0.1)
-    confidence_assessor_llm = GemmaInterface(model="gemma3:4b", temperature=0.1)
+    query_separator_llm = OllamaGemmaLLM()
+    tool_selector_llm = OllamaGemmaLLM()
+    answer_generator_llm = OllamaGemmaLLM()
+    confidence_assessor_llm = OllamaGemmaLLM(model="gemma3:4b", )
 
     tools = create_tools()
 

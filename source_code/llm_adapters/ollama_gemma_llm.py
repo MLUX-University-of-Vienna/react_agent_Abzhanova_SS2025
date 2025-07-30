@@ -1,5 +1,5 @@
 import ollama
-from llm.llm_interface import LLMInterface
+from llm_adapters.llm_base import LLMBase
 
 class OllamaGemmaLLM(LLMBase):
     def __init__(self, model: str = "gemma3:4b", temperature: float = 0.1):
