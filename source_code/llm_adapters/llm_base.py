@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-class LLMInterface(ABC):
+class LLMBase(ABC):
     @abstractmethod
     def generate(self, prompt: str, **kwargs) -> str:
         pass

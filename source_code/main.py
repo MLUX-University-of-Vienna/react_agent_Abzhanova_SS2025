@@ -4,7 +4,7 @@ from typing import Dict, Tuple, List
 
 from pathlib import Path
 
-from llm.ollama.ollama_interface import OllamaInterface
+from llm.ollama.depseek_interface import DepseekInterface
 from llm.gemma_interface import GemmaInterface
 
 from tool_management.tools.calculator_tool import CalculatorTool
