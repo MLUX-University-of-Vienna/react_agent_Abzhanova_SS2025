@@ -1,12 +1,12 @@
 import logging
 from typing import Tuple
-from llm.llm_interface import LLMInterface
+from llm_adapters.llm_base import LLMBase
 from tool_management.tools.agent_tool import AgentTool
 
 logger = logging.getLogger(__name__)
 
 class ResultVerifierViaTool:
-    def __init__(self, llm: LLMInterface, verifier_tool: AgentTool):
+    def __init__(self, llm: LLMBase, verifier_tool: AgentTool):
         self.llm = llm
         self.verifier_tool = verifier_tool
 

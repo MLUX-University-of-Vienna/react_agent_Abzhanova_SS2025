@@ -1,10 +1,10 @@
 import logging
-from llm.llm_interface import LLMInterface
+from llm_adapters.llm_base import LLMBase
 
 logger = logging.getLogger(__name__)
 
 class LLMConfidenceScorer:
-    def __init__(self, llm: LLMInterface):
+    def __init__(self, llm: LLMBase):
         self.llm = llm
 
     def score(self, query: str, result: str, answer: str) -> float:

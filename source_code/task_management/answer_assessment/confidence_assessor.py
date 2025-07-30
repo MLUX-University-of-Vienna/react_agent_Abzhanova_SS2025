@@ -1,13 +1,13 @@
 import logging
-from confidence_assessment.llm_confidence_scorer import LLMConfidenceScorer
-from confidence_assessment.web_verifier import ResultVerifierViaTool
+from .llm_confidence_scorer import LLMConfidenceScorer
+from .result_verifier_via_tool import ResultVerifierViaTool
 from tool_management.tools.serpapi_tool import SerpAPITool
-from llm.llm_interface import LLMInterface
+from llm_adapters.llm_base import LLMBase
 
 logger = logging.getLogger(__name__)
 
 class ConfidenceAssessor:
-    def __init__(self, llm: LLMInterface):
+    def __init__(self, llm: LLMBase):
         self.llm_scorer = LLMConfidenceScorer(llm)
         self.verifier = ResultVerifierViaTool(
             llm,

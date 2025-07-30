@@ -10,8 +10,9 @@ from .tool_executor import ToolExecutor
 from .answer_generator import AnswerGenerator
 
 from task_management.answer_assessment.llm_confidence_scorer import LLMConfidenceScorer
-from task_management.answer_assessment.verifier_scorer import VerifierScorer
-from task_management.answer_assessment.assessor import ConfidenceAssessor
+from task_management.answer_assessment.result_verifier_via_tool import ResultVerifierViaTool
+from task_management.answer_assessment.confidence_assessor import ConfidenceAssessor
+from task_management.answer_assessment.verification_scorer import VerificationScorer
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG) 
@@ -41,7 +42,13 @@ class TaskManager:
 
         self.tool_executor = ToolExecutor(tools)
         self.answer_generator = AnswerGenerator(answer_generator_llm)
-        self.confidence_assessor = ConfidenceAssessor(confidence_assessor_llm)
+        
+        llm_scorer = LLMConfidenceScorer(confidence_assessor_llm)
+        verifier_tool = SerpAPITool(api_key="b53c73f7ff8666ff176932332e272be8175325eede05c4f1b716cbbccf6103ca")
+        verifier = VerificationScorer(confidence_assessor_llm, verifier_tool)
+
+        self.confidence_assessor = ConfidenceAssessor(llm_scorer)
+
 
     def run(self, query: str) -> Dict[str, object]:
         self.logger.info(f"Starting process for query: {query}")
