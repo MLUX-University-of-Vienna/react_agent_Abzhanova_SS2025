@@ -7,35 +7,13 @@ from tool_management.tool_selection.tool_selection_strategy import ToolSelection
 from tool_management.tools.serpapi_tool import SerpAPITool
 
 from .tool_executor import ToolExecutor
+from .answer_generator import AnswerGenerator
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG) 
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 logger.addHandler(handler)
-
-class AnswerGenerator:
-    def __init__(self, llm: LLMBase):
-        self.llm = llm
-
-    def generate(self, query: str, result: str) -> str:
-        prompt = f"""Based on this result, answer the query:
-
-Query: {query}
-Result: {result}
-
-Format:
-Final Answer: <your answer here>"""
-        return self.llm.generate(prompt).strip()
-
-    def fallback(self, query: str) -> str:
-        prompt = f"""Unable to get a confident answer via tools.
-Please answer this directly:
-
-Question: {query}
-
-Final Answer:"""
-        return self.llm.generate(prompt).strip()
 
 class ConfidenceAssessor:
     def __init__(self, llm: LLMBase):
