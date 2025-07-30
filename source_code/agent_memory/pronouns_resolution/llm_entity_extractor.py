@@ -1,13 +1,13 @@
 from .entity_extractor import EntityExtractor
-from llm.llm_interface import LLMInterface
+from llm_adapters.llm_base import LLMBase
 
 class LLMEntityExtractor(EntityExtractor):
-    def __init__(self, llm: LLMInterface):
+    def __init__(self, llm: LLMBase):
         self.llm = llm
 
     def extract(self, text: str) -> Optional[str]:
         prompt = f"""
-Extract the most relevant named person or organization from this sentence:
+Extract the most relevant named person or organisation from this sentence:
 "{text}"
 
 If none exists, return: NONE.
