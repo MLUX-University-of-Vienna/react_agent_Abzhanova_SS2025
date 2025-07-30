@@ -52,22 +52,22 @@ class ReActAgent:
         return final_answer
 
     def _separate_query(self, query: str) -> List[str]:
-        subqs = self.separator.separate(query)
-        logger.debug(f"Separated into {len(subqs)} subquery(ies): {subqs}")
-        return subqs
+        subqueries = self.separator.separate(query)
+        logger.debug(f"Separated into {len(subqueries)} subquery(ies): {subqueries}")
+        return subqueries
        
     def _answer_subqueries(self, subqueries: List[str]) -> List[Dict[str, str]]:
         results = []
-        for sq in subqueries:
+        for subquery in subqueries:
             if self._contains_pronouns(sq):
-                resolved_sq = self.query_memory.resolve_pronouns(sq)
-                if resolved_sq == sq:
-                    resolved_sq = self.conversation_memory.resolve_pronouns(sq)
+                resolved_subquery = self.query_memory.resolve_pronouns(subquery)
+                if resolved_subquery == subquery:
+                    resolved_subquery = self.conversation_memory.resolve_pronouns(subquery)
                     logger.debug("Pronouns resolved using conversation memory")
                 else:
                     logger.debug("Pronouns resolved using query memory")
             else:
-                resolved_sq = sq
+                resolved_subquery = subquery
 
             logger.info(f"Handling subquery: {resolved_sq}")
             result = self.task_manager.run(resolved_sq)
@@ -91,15 +91,15 @@ class ReActAgent:
 
     def _aggregate_answers(self, original_query: str, parts: List[Dict[str, str]]) -> str:
         logger.info("Aggregating subquery answers into final response.")
-        agg_prompt = "SYSTEM: You are an expert summarizer.\n\n"
-        agg_prompt += "I asked these sub-questions and got these answers:\n\n"
+        aggregating_prompt = "SYSTEM: You are an expert summarizer.\n\n"
+        aggregating_prompt += "I asked these sub-questions and got these answers:\n\n"
         for p in parts:
-            agg_prompt += f"- Q: {p['question']}\n  A: {p['answer']}\n\n"
-        agg_prompt += (
+            aggregating_prompt += f"- Q: {p['question']}\n  A: {p['answer']}\n\n"
+        aggregating_prompt += (
             "Please combine these into a single, coherent final response to the original query:\n"
             f"\"{original_query}\"\n\nAnswer:"
         )
-        return self.answer_generator_llm.generate(agg_prompt).strip()
+        return self.answer_generator_llm.generate(aggregating_prompt).strip()
 
     def _contains_pronouns(self, text: str) -> bool:
         pronouns = r'\b(he|she|it|they|his|her|their)\b'
