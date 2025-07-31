@@ -33,7 +33,7 @@ Answer YES or NO:"""
             verifier_score = 1.0 if "yes" in response else 0.3
         except Exception as e:
             logger.debug("Verification check failed, defaulting verifier score to 0.5", exc_info=e)
-            verifier_score = 0.5
+            verifier_score = 0.0
 
         final_score = round(0.5 * llm_score + 0.5 * verifier_score, 2)
         logger.debug(
