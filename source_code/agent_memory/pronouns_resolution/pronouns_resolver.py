@@ -3,7 +3,8 @@ import logging
 from typing import List, Optional
 from .entity_extractor import EntityExtractor
 from .spacy_entity_extractor import SpacyEntityExtractor
-import gender_guesser.detector as gender
+from llm_adapters.llm_base import LLMBase
+from llm_adapters.ollama_gemma_llm import OllamaGemmaLLM
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -12,9 +13,9 @@ handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 logger.addHandler(handler)
  
 class PronounsResolver:
-    def __init__(self, extractor: EntityExtractor):
-        self.extractor = extractor or SpacyEntityExtractor()
-        self.gender_detector = gender.Detector()
+    def __init__(self, entity_extractor: EntityExtractor, gender_detector_llm: LLMBase):
+        self.entity_extractor = entity_extractor or SpacyEntityExtractor()
+        self.gender_detector_llm = gender_detector_llm or OllamaGemmaLLM
         self.context = {
             "male": None,
             "female": None,
@@ -32,6 +33,8 @@ class PronounsResolver:
 
         if prior_answers:
             self._update_context_from_answers(prior_answers)
+
+        self._update_context_from_query(subqueries[0])
 
         return self._resolve_subqueries(subqueries)
 
@@ -76,7 +79,7 @@ class PronounsResolver:
         return text
 
     def _update_context_from_query(self, query: str):
-        entity = self.extractor.extract(query)
+        entity = self.entity_extractor.extract(query)
         if entity:
             logger.debug(f"Extracted entity: '{entity}'")
             gender = self._guess_gender(entity)
@@ -91,7 +94,7 @@ class PronounsResolver:
         self._extract_numeric_from_answer(answer)
 
     def _extract_entity_from_answer(self, answer: str):
-        entity = self.extractor.extract(answer)
+        entity = self.entity_extractor.extract(answer)
         if entity:
             gender = self._guess_gender(entity)
             if gender:
@@ -137,11 +140,25 @@ class PronounsResolver:
             return None
         return entity + "'" if entity.endswith("s") else entity + "'s"
 
-    def _guess_gender(self, entity: str) -> Optional[str]:
-        first_name = entity.split()[0]
-        g = self.gender_detector.get_gender(first_name)
-        if g in ("male", "mostly_male"):
-            return "male"
-        elif g in ("female", "mostly_female"):
-            return "female"
-        return "neutral"
+    def _guess_gender(self, entity: str, context: Optional[str] = None) -> Optional[str]:
+        prompt = f"""\
+Decide the gender category of the following named entity.
+Output exactly one of: male, female, neutral.
+
+Entity: "{entity}"
+{f'Context: "{context}"\n' if context else ""}Gender:"""
+
+        try:
+            resp = self.gender_detector_llm.generate(prompt).strip().lower()
+            logger.info(f"[Gender-LLM] Entity=«{entity}» → Raw resp=«{resp}»")
+            if resp.startswith("male"):
+                logger.info(f"[Gender-LLM] Classified «{entity}» as male")
+                return "male"
+            if resp.startswith("female"):
+                logger.info(f"[Gender-LLM] Classified «{entity}» as female")
+                return "female"
+            logger.info(f"[Gender-LLM] Classified «{entity}» as neutral")
+            return "neutral"
+        except Exception:
+            logger.exception("LLM gender classification failed, defaulting to neutral")
+            return "neutral"
