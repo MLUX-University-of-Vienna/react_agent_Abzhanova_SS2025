@@ -22,8 +22,12 @@ class QueryMemory:
         return "\n".join(prior[-3:])
 
     def resolve_pronouns(self, subquery: str) -> str:
-        prior_answers = [a for _, a in self.subqueries]
-        resolved = self.pronouns_resolver.resolve(["", subquery], prior_answers=prior_answers)
+        prior_answers = [answer for _, answer in self.subqueries]
+        query = self.query
+        resolved = self.pronouns_resolver.resolve(
+            [query, subquery],
+            prior_answers=prior_answers
+        )
         return resolved[-1]
 
 

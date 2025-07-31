@@ -23,7 +23,11 @@ class ConversationMemory:
 
     def resolve_pronouns(self, text: str) -> str:
         prior_answers = [entry["answer"] for entry in self.history]
-        resolved = self.pronouns_resolver.resolve(["", text], prior_answers=prior_answers)
+        query = self.history[0]["query"] if self.history else ""
+        resolved = self.pronouns_resolver.resolve(
+            [query, text],
+            prior_answers=prior_answers
+        )
         return resolved[-1]
 
     def _find_entity(self, text: str, gender: str = None) -> str:

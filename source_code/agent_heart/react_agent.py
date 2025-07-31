@@ -25,7 +25,7 @@ logger.addHandler(handler)
 class ReActAgent:
     def __init__(self, query_separator_llm: LLMBase, tool_selector_llm: LLMBase,
                  answer_generator_llm: LLMBase, confidence_assessor_llm: LLMBase,
-                 entity_extractor: EntityExtractor, tools: Dict[str, AgentTool]):
+                 entity_extractor: EntityExtractor, pronouns_resolution_llm: LLMBase, tools: Dict[str, AgentTool]):
         self.separator = LLMLogicalSeparationStrategy(query_separator_llm)
         self.selector = RegexPatternToolSelector(tool_selector_llm)
         self.task_manager = TaskManager(tool_selector_llm, answer_generator_llm,
@@ -33,10 +33,10 @@ class ReActAgent:
         self.answer_generator_llm = answer_generator_llm
 
         self.conversation_memory = ConversationMemory(
-            pronouns_resolver=PronounsResolver(entity_extractor)
+            pronouns_resolver=PronounsResolver(entity_extractor, pronouns_resolution_llm)
         )
         self.query_memory = QueryMemory(
-            pronouns_resolver=PronounsResolver(entity_extractor)
+            pronouns_resolver=PronounsResolver(entity_extractor, pronouns_resolution_llm)
         )
 
     def handle(self, query: str) -> str:

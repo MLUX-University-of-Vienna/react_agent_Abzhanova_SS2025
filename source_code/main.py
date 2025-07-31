@@ -56,12 +56,12 @@ def main():
     query_separator_llm = OllamaGemmaLLM()
     tool_selector_llm = OllamaGemmaLLM()
     answer_generator_llm = OllamaGemmaLLM()
-    confidence_assessor_llm = OllamaGemmaLLM(model="gemma3:4b", )
+    confidence_assessor_llm = OllamaGemmaLLM()
+    pronouns_resolution_llm = OllamaGemmaLLM()
 
     tools = create_tools()
 
     entity_extractor = SpacyEntityExtractor()
-    resolver = PronounsResolver(entity_extractor)
 
     agent = ReActAgent(
         query_separator_llm=query_separator_llm,
@@ -69,6 +69,7 @@ def main():
         answer_generator_llm=answer_generator_llm,
         confidence_assessor_llm=confidence_assessor_llm,
         entity_extractor=entity_extractor,
+        pronouns_resolution_llm=pronouns_resolution_llm,
         tools=tools
     )
 
@@ -80,7 +81,7 @@ def main():
             print("Goodbye!")
             break
         if not user_input:
-            continue  # skip empty input
+            continue  
 
         response = agent.handle(user_input)
         print(f"Agent: {response}\n")
