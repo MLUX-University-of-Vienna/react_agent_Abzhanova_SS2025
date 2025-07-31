@@ -1,11 +1,10 @@
 import re
 import logging
-from typing import Optional
-import wikipedia        
+from typing import List
+import wikipedia
 import wikipediaapi
 
 from .agent_tool import AgentTool, ToolResponse
-
 
 class WikipediaTool(AgentTool):
     def __init__(self, user_agent: str = "AIResearchBot/1.0 (research@example.org)"):
@@ -23,12 +22,14 @@ class WikipediaTool(AgentTool):
 
     @property
     def description(self) -> str:
-        return """Searches Wikipedia for factual information including:
-        - Biographies
-        - Historical events
-        - Scientific concepts
-        - Organization information
-        - Geographical facts"""
+        return (
+            "Searches Wikipedia for factual information including:\n"
+            "- Biographies\n"
+            "- Historical events\n"
+            "- Scientific concepts\n"
+            "- Organization information\n"
+            "- Geographical facts"
+        )
 
     _encyclopedia_patterns = [
         r'who (is|was|invented|created|discovered|founded)',
@@ -51,35 +52,30 @@ class WikipediaTool(AgentTool):
 }"""
 
     def execute(self, query: str) -> ToolResponse:
-        self.logger.info(f"Starting Wikipedia search for query: {query}")
+        self.logger.info(f"Starting Wikipedia search for query: '{query}'")
+        term = query.strip()
+        if not term:
+            return ToolResponse(content="No query provided.", success=False)
+
         try:
-            search_term = self._prepare_search_term(query)
-            if not search_term:
-                return ToolResponse(content="No query provided.", success=False)
-
-            results = self._search_wikipedia(search_term)
-            if not results:
-                return ToolResponse(content=f"No Wikipedia articles found for '{search_term}'", success=True)
-
-            summary = self._get_summary_from_page(results[0])
-            return ToolResponse(content=summary, success=True)
-
+            titles: List[str] = wikipedia.search(term, results=5)
         except Exception as e:
-            self.logger.error(f"Wikipedia search failed: {e}")
-            return ToolResponse(content=f"Error accessing Wikipedia: {e}", success=False)
+            self.logger.error(f"Search failed: {e}")
+            return ToolResponse(content=f"Error during search: {e}", success=False)
 
-    def _prepare_search_term(self, query: str) -> str:
-        return query.strip()
+        if not titles:
+            return ToolResponse(content=f"No Wikipedia articles found for '{term}'", success=True)
 
-    def _search_wikipedia(self, term: str) -> list:
-        return wikipedia.search(term)
+        page = self.wiki_api.page(titles[0])
+        if not page.exists():
+            return ToolResponse(content=f"Found title '{titles[0]}' but page does not exist.", success=False)
 
-    def _get_summary_from_page(self, page_title: str) -> str:
-        page = wikipedia.page(page_title)
         summary = page.summary
         if len(summary) > self.max_summary_length:
-            summary = summary[:self.max_summary_length] + "..."
-        return f"Title: {page.title}\nSummary: {summary}"
+            summary = summary[:self.max_summary_length].rstrip() + "..."
+
+        content = f"Title: {page.title}\nSummary: {summary}"
+        return ToolResponse(content=content, success=True)
 
     @classmethod
     def get_patterns(cls):
