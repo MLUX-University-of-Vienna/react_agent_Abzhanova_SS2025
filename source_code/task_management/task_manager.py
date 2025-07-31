@@ -49,6 +49,10 @@ class TaskManager:
     def run(self, query: str) -> Dict[str, object]:
         self.logger.info(f"Starting process for query: {query}")
 
+        self_answer = self._try_llm_self_answer(query)
+        if self_answer is not None:
+            return {"final_answer": self_answer}
+
         tool_attempts = {name: 0 for name in self.tools}
         tool_result_cache = {}
         best_answer = None
@@ -94,6 +98,26 @@ class TaskManager:
             best_answer = self.answer_generator.fallback(query)
 
         return {"final_answer": self._extract_final_answer(best_answer)}
+
+    def _try_llm_self_answer(self, query: str) -> Optional[str]:
+        self.logger.debug("Attempting self-answer (no tools)")
+        prompt = (
+            "You are a helpful, knowledgeable assistant with up-to-date general knowledge.\n"
+            f"Answer the user’s question as clearly and succinctly as possible:\n\n"
+            f"Q: {query}\n\nA:"
+        )
+        answer = self.answer_generator_llm.generate(prompt).strip()
+        self.logger.info(f"[SELF] Answer: {answer!r}")
+
+        confidence = self.confidence_assessor.assess(query, None, answer)
+        self.logger.info(f"Self-answer confidence: {confidence:.2f}")
+
+        if confidence >= self.confidence_threshold:
+            self.logger.debug("Self-answer confidence above threshold, returning it")
+            return answer
+
+        self.logger.info("Self-answer failed confidence threshold, using tools instead")
+        return None    
     
     def _get_available_tools(self, tool_attempts):
         return [t for t, attempts in tool_attempts.items() if attempts < self.max_attempts_per_tool]
