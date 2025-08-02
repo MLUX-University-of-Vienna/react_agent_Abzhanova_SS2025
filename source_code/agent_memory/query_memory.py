@@ -1,5 +1,7 @@
 from typing import List, Tuple
+
 from agent_memory.pronouns_resolution.pronouns_resolver import PronounsResolver
+from .entity_class import Entity
 
 class QueryMemory:
     def __init__(self, pronouns_resolver: PronounsResolver):
