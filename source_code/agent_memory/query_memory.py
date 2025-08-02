@@ -12,7 +12,14 @@ class QueryMemory:
         self.subqueries = []
 
     def add_subquery(self, subquery: str, answer: str):
-        self.subqueries.append((subquery, answer))
+        q_ent: Optional[Entity] = self.pronouns_resolver.entity_extractor.extract(subquery)
+        a_ent: Optional[Entity] = self.pronouns_resolver.entity_extractor.extract(answer)
+        self.subqueries.append({
+            "subquery":   subquery,
+            "entity":     q_ent,
+            "answer":     answer,
+            "answer_ent": a_ent,
+        })
 
     def get_all(self) -> List[Tuple[str, str]]:
         return self.subqueries
