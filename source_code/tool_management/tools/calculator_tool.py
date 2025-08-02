@@ -35,7 +35,6 @@ class CalculatorTool(AgentTool):
         r'\bhow (much|many|long|far|fast|tall)\b.*[\d+\-*/%^]',
         r'[-+*/%^=()]+',
         r'\b\d+\s*[-+*/^%]\s*\d+\b',
-        r'\d+!?|\b!?\d+\b',
         r'\bsqrt\(|√\d+',
         r'\b\d+\s*(\^|\*\*)\s*\d+\b'
     ]
