@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 class ConversationMemory:
     def __init__(self, pronouns_resolver: PronounsResolver):
-        self.history: List[Dict[str, str]] = []
+        self.history: List[Dict[str, Optional[Entity]]] = []
         self.pronouns_resolver = pronouns_resolver
 
     def update(self, query: str, answer: str):

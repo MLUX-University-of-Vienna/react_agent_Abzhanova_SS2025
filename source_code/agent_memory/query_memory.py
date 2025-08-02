@@ -4,7 +4,7 @@ from agent_memory.pronouns_resolution.pronouns_resolver import PronounsResolver
 class QueryMemory:
     def __init__(self, pronouns_resolver: PronounsResolver):
         self.query: str = ""
-        self.subqueries: List[Tuple[str, str]] = []
+        self.subqueries: List[Dict[str, Optional[Entity]]] = []
         self.pronouns_resolver = pronouns_resolver
 
     def start_new(self, query: str):
