@@ -6,6 +6,7 @@ from pathlib import Path
 
 from llm_adapters.ollama_depseek_llm import OllamaDeepseekLLM
 from llm_adapters.ollama_gemma_llm import OllamaGemmaLLM
+from llm_adapters.ollama_mistral_llm import OllamaMistralLLM
 
 from tool_management.tools.calculator_tool import CalculatorTool
 from tool_management.tools.serpapi_tool import SerpAPITool
@@ -55,7 +56,7 @@ def main():
 
     query_separator_llm = OllamaGemmaLLM()
     tool_selector_llm = OllamaGemmaLLM()
-    answer_generator_llm = OllamaGemmaLLM()
+    answer_generator_llm = OllamaMistralLLM()
     confidence_assessor_llm = OllamaGemmaLLM()
     pronouns_resolution_llm = OllamaGemmaLLM()
 
