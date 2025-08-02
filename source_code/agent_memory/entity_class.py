@@ -1,5 +1,6 @@
 from typing import Optional
 from dataclasses import dataclass, field
+from .gender_enum import GenderEnum
 
 @dataclass
 class Entity:
@@ -7,7 +8,7 @@ class Entity:
     label: Optional[str] = None     
     start_char: Optional[int] = None
     end_char: Optional[int] = None
-    gender: Gender = Gender.UNKNOWN
+    gender: GenderEnum = GenderEnum.UNKNOWN
     age: Optional[int] = None       
 
     def possessive(self) -> str:

@@ -1,6 +1,6 @@
 from enum import Enum, auto
 
-class Gender(Enum):
+class GenderEnum(Enum):
     MALE      = auto()
     FEMALE    = auto()
     NEUTRAL   = auto()
@@ -8,9 +8,9 @@ class Gender(Enum):
 
     def __str__(self):
         return {
-            Gender.MALE:    "male",
-            Gender.FEMALE:  "female",
-            Gender.NEUTRAL: "neutral",
-            Gender.UNKNOWN: "unknown",
+            GenderEnum.MALE:    "male",
+            GenderEnum.FEMALE:  "female",
+            GenderEnum.NEUTRAL: "neutral",
+            GenderEnum.UNKNOWN: "unknown",
         }[self]
 
