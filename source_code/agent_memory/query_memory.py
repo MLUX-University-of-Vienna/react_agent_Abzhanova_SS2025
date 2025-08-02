@@ -25,7 +25,11 @@ class QueryMemory:
         return self.subqueries
 
     def get_context_for_subquery(self, subquery: str) -> str:
-        prior = [f"Q: {q}\nA: {a}" for q, a in self.subqueries if q != subquery]
+        prior = [
+            f"Q: {r['subquery']}\nA: {r['answer']}"
+            for r in self.subqueries
+            if r["subquery"] != subquery
+        ]
         return "\n".join(prior[-3:])
 
     def resolve_pronouns(self, subquery: str) -> str:
