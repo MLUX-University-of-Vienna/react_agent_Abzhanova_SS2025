@@ -39,17 +39,9 @@ class ConversationMemory:
 
     def resolve_pronouns(self, text: str) -> str:
         prior_answers = [entry["answer"] for entry in self.history]
-        query = self.history[0]["query"] if self.history else ""
+        first_query   = self.history[0]["query"] if self.history else ""
         resolved = self.pronouns_resolver.resolve(
-            [query, text],
+            [first_query, text],
             prior_answers=prior_answers
         )
         return resolved[-1]
-
-    def _find_entity(self, text: str, gender: str = None) -> str:
-        matches = re.findall(r"([A-Z][a-z]+(?:\s[A-Z]\.)?(?:\s[A-Z][a-z]+)+)", text)
-        if matches:
-            return matches[0]  
-        return ""
-
-    
