@@ -11,6 +11,7 @@ class ConversationMemory:
     def __init__(self, pronouns_resolver: PronounsResolver):
         self.history: List[Dict[str, Optional[Entity]]] = []
         self.pronouns_resolver = pronouns_resolver
+        self.MAX_TURNS = 5
 
     def update(self, query: str, answer: str):
         query_entity: Optional[Entity] = self.pronouns_resolver.entity_extractor.extract(query)
