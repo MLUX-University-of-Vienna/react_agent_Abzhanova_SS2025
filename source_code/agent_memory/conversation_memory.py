@@ -23,11 +23,14 @@ class ConversationMemory:
         })
         logger.debug(f"Updated conversation memory. Current length: {len(self.history)}")
 
-    def get_relevant_context(self) -> str:#
+    def get_relevant_context(self) -> str:
         if not self.history:
             return ""
-        context = "\n".join([f"Q: {entry['query']}\nA: {entry['answer']}" for entry in self.history[-5:]])
-        return f"Recent conversation context:\n{context}"
+        lines = [
+            f"Q: {e['query']}\nA: {e['answer']}"
+            for e in self.history[-5:]
+        ]
+        return "Recent conversation context:\n" + "\n".join(lines)
 
     def resolve_pronouns(self, text: str) -> str:
         prior_answers = [entry["answer"] for entry in self.history]
