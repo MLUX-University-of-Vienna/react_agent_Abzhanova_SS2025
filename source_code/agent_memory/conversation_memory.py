@@ -27,11 +27,15 @@ class ConversationMemory:
     def get_relevant_context(self) -> str:
         if not self.history:
             return ""
-        lines = [
-            f"Q: {e['query']}\nA: {e['answer']}"
-            for e in self.history[-5:]
-        ]
-        return "Recent conversation context:\n" + "\n".join(lines)
+        
+        recent_turns = self.history[-self.MAX_TURNS:]
+        context_lines: List[str] = []
+        for turn in recent_turns:
+            question_text = turn["query"]
+            answer_text = turn["answer"]
+            context_lines.append(f"Q: {question_text}\nA: {answer_text}")
+
+        return "Recent conversation context:\n" + "\n".join(context_lines)
 
     def resolve_pronouns(self, text: str) -> str:
         prior_answers = [entry["answer"] for entry in self.history]
