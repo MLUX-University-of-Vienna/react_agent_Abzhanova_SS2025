@@ -1,14 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Optional, List
-
-from agent_memory.entity import Entity
-
+from typing import Optional
 
 class EntityExtractor(ABC):
     @abstractmethod
-    def extract(self, text: str) -> Optional[Entity]:
+    def extract(self, text: str) -> Optional[str]:
         pass
-
-    def extract_all(self, text: str) -> List[Entity]:
-        one = self.extract(text)
-        return [one] if one else []
