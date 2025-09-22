@@ -14,3 +14,8 @@ class Action(ABC):
     def when_to_pick(self) -> str:
         return ""
 
+    @property
+    def when_to_pick_head(self) -> Optional[List[str]]:
+        return None
+
+  
