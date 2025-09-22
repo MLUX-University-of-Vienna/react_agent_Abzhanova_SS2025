@@ -5,3 +5,9 @@ class Action(ABC):
     @property
     @abstractmethod
     def name(self) -> str: ...
+
+    @property
+    @abstractmethod
+    def instructions(self) -> str: ...
+
+
