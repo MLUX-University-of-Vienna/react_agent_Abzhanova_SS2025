@@ -10,4 +10,7 @@ class Action(ABC):
     @abstractmethod
     def instructions(self) -> str: ...
 
+    @property
+    def when_to_pick(self) -> str:
+        return ""
 
