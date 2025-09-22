@@ -22,3 +22,19 @@ class Action(ABC):
     def examples(self) -> List[str]:
         return []
 
+    def to_catalog_entry(self) -> str:
+        lines = [f"- {self.name}"]
+        if self.instructions:
+            lines.append(f"  instructions: {self.instructions}")
+        if self.when_to_pick:
+            lines.append(f"  when_to_pick: {self.when_to_pick}")
+        head = self.when_to_pick_head
+        if head:
+            lines.append("  when_to_pick_head:")
+            for item in head:
+                lines.append(f"    - {item}")
+        if self.examples:
+            lines.append("  examples:")
+            for ex in self.examples:
+                lines.append(f"    - {ex}")
+        return "\n".join(lines)
