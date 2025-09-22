@@ -18,4 +18,7 @@ class Action(ABC):
     def when_to_pick_head(self) -> Optional[List[str]]:
         return None
 
-  
+    @property
+    def examples(self) -> List[str]:
+        return []
+
