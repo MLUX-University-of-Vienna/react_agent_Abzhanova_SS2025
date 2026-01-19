@@ -4,7 +4,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-from agent_memory.data_structures import (
+from ...agent_memory.data_structures import (
     Evidence,
     EvidenceExtract,
     Step,

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from agent_memory.data_structures import (
+from ...agent_memory.data_structures import (
     Step,
     Query,
     Entity,
@@ -13,7 +13,7 @@ from agent_memory.data_structures import (
     new_entity,
 )
 
-from agent_heart.logger import logger
+from ..logger import logger
 
 @dataclass
 class StepTraceRecorder:

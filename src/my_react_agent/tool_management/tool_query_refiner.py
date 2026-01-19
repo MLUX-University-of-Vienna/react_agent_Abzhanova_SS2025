@@ -6,8 +6,8 @@ import re
 from dataclasses import dataclass
 from typing import Optional, List, Callable, Dict, Any
 
-from llm_adapters.llm_base import LLMBase
-from tool_management.tools.agent_tool import AgentTool
+from ..llm_adapters.llm_base import LLMBase
+from .tools.agent_tool import AgentTool
 
 logger = logging.getLogger(__name__)
 

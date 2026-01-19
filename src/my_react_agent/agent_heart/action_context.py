@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
-from agent_memory.data_structures import Step, StepDecision as MemStepDecision
+from ..agent_memory.data_structures import Step, StepDecision as MemStepDecision
 
 from .action_services import ActionServices
 

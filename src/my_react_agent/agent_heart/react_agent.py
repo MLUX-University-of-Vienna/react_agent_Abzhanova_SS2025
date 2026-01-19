@@ -4,7 +4,7 @@ from dataclasses import replace
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-from agent_memory.data_structures import (
+from ..agent_memory.data_structures import (
     QueryStatus,
     StepPlan,
     Step,
@@ -14,18 +14,18 @@ from agent_memory.data_structures import (
     step_set_result,
 )
 
-from agent_memory.conversation_memory import ConversationMemory
-from agent_memory.query_memory import QueryMemory
-from agent_memory.entity_extractor import EntityExtractor
+from ..agent_memory.conversation_memory import ConversationMemory
+from ..agent_memory.query_memory import QueryMemory
+from ..agent_memory.entity_extractor import EntityExtractor
 
-from agent_core.agent_actions.action import Action
+from ..agent_core.agent_actions.action import Action
 
-from llm_adapters.llm_base import LLMBase
-from tool_management.tool_executor import ToolExecutor
+from ..llm_adapters.llm_base import LLMBase
+from ..tool_management.tool_executor import ToolExecutor
 from .answer_generator import AnswerGenerator
-from tool_management.tool_query_refiner import ToolQueryRefiner
-from tool_management.tools.agent_tool import AgentTool
-from confidence_assessment.confidence_assessor import ConfidenceAssessor
+from ..tool_management.tool_query_refiner import ToolQueryRefiner
+from ..tool_management.tools.agent_tool import AgentTool
+from ..confidence_assessment.confidence_assessor import ConfidenceAssessor
 
 from .logger import logger
 from .config import ReActAgentConfig

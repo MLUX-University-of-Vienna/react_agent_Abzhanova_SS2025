@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from agent_core.agent_actions.action import Action
+from .action import Action
 
 
 class StopAction(Action):

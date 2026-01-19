@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 
-from llm_adapters.llm_base import LLMBase
+from ..llm_adapters.llm_base import LLMBase
 
 from .models import LLMEntityAlignment
 from .parameter_assessor import ParameterAssessor

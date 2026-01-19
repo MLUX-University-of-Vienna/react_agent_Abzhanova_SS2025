@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from datetime import datetime
 
-from agent_memory.data_structures import Step, StepPlan, StepStatus, new_step
+from ...agent_memory.data_structures import Step, StepPlan, StepStatus, new_step
 
 @dataclass(frozen=True)
 class StepFactory:

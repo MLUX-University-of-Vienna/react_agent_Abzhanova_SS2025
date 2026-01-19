@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from agent_memory.data_structures import Evidence
+from ...agent_memory.data_structures import Evidence
 
 
 class AgentTool(ABC):

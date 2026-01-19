@@ -3,23 +3,23 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Optional
 
-from llm_adapters.llm_base import LLMBase
+from ..llm_adapters.llm_base import LLMBase
 
-from confidence_assessment.models import (
+from .models import (
     LLMEntityAlignment,
     LLMAnswerQuality,
     LLMAnswerRealism,
 )
 
-from confidence_assessment.json_utils import (
+from .json_utils import (
     _safe_text,
     _clamp01,
     _serialise_tool_result,
 )
 
-from confidence_assessment.entity_alignment_assessor import EntityAlignmentAssessor
-from confidence_assessment.answer_quality_assessor import AnswerQualityAssessor
-from confidence_assessment.answer_realism_assessor import AnswerRealismAssessor
+from .entity_alignment_assessor import EntityAlignmentAssessor
+from .answer_quality_assessor import AnswerQualityAssessor
+from .answer_realism_assessor import AnswerRealismAssessor
 
 logger = logging.getLogger(__name__)
 

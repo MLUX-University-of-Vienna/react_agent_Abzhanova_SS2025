@@ -5,9 +5,9 @@ import re
 from json import JSONDecodeError
 from typing import Any, Dict, List, Optional
 
-from agent_core.agent_actions.action import Action
+from ...agent_core.agent_actions.action import Action
 
-from agent_heart.logger import logger
+from ..logger import logger
 
 
 class TextUtilsMixin:

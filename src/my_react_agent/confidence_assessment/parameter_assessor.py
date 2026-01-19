@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
-from llm_adapters.llm_base import LLMBase
+from ..llm_adapters.llm_base import LLMBase
 
 
 class ParameterAssessor(ABC):

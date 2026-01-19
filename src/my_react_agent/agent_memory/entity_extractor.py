@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List, Any
 
-from agent_memory.data_structures import Entity
+from .data_structures import Entity
 
 
 class EntityExtractor(ABC):

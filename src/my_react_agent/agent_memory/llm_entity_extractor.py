@@ -7,10 +7,10 @@ from dataclasses import replace
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from llm_adapters.llm_base import LLMBase
-from agent_memory.entity_extractor import EntityExtractor
+from ..llm_adapters.llm_base import LLMBase
+from .entity_extractor import EntityExtractor
 
-from agent_memory.data_structures import (
+from .data_structures import (
     Entity,
     Evidence,
     EvidenceExtract,

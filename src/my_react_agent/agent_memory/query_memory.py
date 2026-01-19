@@ -4,7 +4,7 @@ import logging
 from dataclasses import replace
 from typing import Any, Dict, List, Optional, Tuple
 
-from agent_memory.data_structures import (
+from .data_structures import (
     Query,
     QueryStatus,
     Step,

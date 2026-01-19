@@ -6,11 +6,11 @@ from pathlib import Path
 from logging.handlers import RotatingFileHandler
 from typing import Dict, Optional, List
 
-from llm_adapters.ollama_mistral_llm import OllamaMistralLLM
-from llm_adapters.ollama_deepseek_llm import OllamaDeepseekLLM
-from llm_adapters.ollama_llama3_llm import OllamaLlama3LLM
+from .llm_adapters.ollama_mistral_llm import OllamaMistralLLM
+from .llm_adapters.ollama_deepseek_llm import OllamaDeepseekLLM
+from .llm_adapters.ollama_llama3_llm import OllamaLlama3LLM
 
-from agent_core.agent_actions import (
+from .agent_core.agent_actions import (
     Action,
     AnswerByItselfAction,
     ClarifyAction,
@@ -18,13 +18,13 @@ from agent_core.agent_actions import (
     StopAction
 )
 
-from agent_core.agent_actions.need_context_action import NeedContextAction
+from .agent_core.agent_actions.need_context_action import NeedContextAction
 from agent_heart.react_agent import ReActAgent
 
-from agent_memory.llm_entity_extractor import LLMEntityExtractor
-from agent_memory.entity_extractor import EntityExtractor
-from agent_memory.data_structures import Mention
-from agent_memory.data_structures import GenderEnum
+from .agent_memory.llm_entity_extractor import LLMEntityExtractor
+from .agent_memory.entity_extractor import EntityExtractor
+from .agent_memory.data_structures import Mention
+from .agent_memory.data_structures import GenderEnum
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

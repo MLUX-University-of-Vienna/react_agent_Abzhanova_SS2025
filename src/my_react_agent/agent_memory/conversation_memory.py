@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Deque, Dict, List, Optional, Tuple, Union
 
-from agent_memory.data_structures import (
+from .data_structures import (
     Entity,
     EntityId,
     Query,

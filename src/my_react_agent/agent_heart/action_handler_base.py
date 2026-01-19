@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Tuple, TYPE_CHECKING
 
-from agent_memory.data_structures import Step, StepResult, StepToolCall, ToolResponse
+from ..agent_memory.data_structures import Step, StepResult, StepToolCall, ToolResponse
 
 if TYPE_CHECKING:
     from .action_context import ActionHandlerContext

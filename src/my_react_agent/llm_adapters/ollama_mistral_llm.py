@@ -1,5 +1,5 @@
 import ollama
-from llm_adapters.llm_base import LLMBase
+from .llm_base import LLMBase
 
 class OllamaMistralLLM(LLMBase):
     def __init__(self, model: str = "mistral", temperature: float = 0.1):

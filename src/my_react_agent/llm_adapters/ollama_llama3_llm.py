@@ -1,5 +1,5 @@
 import ollama
-from llm_adapters.llm_base import LLMBase
+from .llm_base import LLMBase
 
 class OllamaLlama3LLM(LLMBase):
     def __init__(

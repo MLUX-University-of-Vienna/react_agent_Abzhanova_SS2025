@@ -5,7 +5,7 @@ from dataclasses import replace
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-from agent_memory.data_structures import (
+from ...agent_memory.data_structures import (
     Evidence,
     EvidenceExtract,
     Step,
@@ -21,9 +21,9 @@ from agent_memory.data_structures import (
     step_set_result,
 )
 
-from tool_management.tool_query_refiner import RefinerPolicy
+from ...tool_management.tool_query_refiner import RefinerPolicy
 
-from agent_heart.logger import logger
+from ..logger import logger
 from .text_utils import TextUtilsMixin
 
 

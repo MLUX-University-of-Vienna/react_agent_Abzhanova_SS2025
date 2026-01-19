@@ -1,6 +1,6 @@
 import re
 
-from llm_adapters.llm_base import LLMBase
+from ..llm_adapters.llm_base import LLMBase
 
 class AnswerGenerator:
     def __init__(self, llm: LLMBase):

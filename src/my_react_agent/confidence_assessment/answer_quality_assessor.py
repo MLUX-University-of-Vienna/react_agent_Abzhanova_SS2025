@@ -4,7 +4,7 @@ import json
 import logging
 from typing import Optional
 
-from llm_adapters.llm_base import LLMBase
+from ..llm_adapters.llm_base import LLMBase
 
 from .models import LLMAnswerQuality
 from .parameter_assessor import ParameterAssessor

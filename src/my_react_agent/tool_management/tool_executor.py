@@ -2,8 +2,8 @@ import logging
 from datetime import datetime
 from typing import Dict
 
-from tool_management.tools.agent_tool import AgentTool
-from agent_memory.data_structures import Evidence
+from .tools.agent_tool import AgentTool
+from ..agent_memory.data_structures import Evidence
 
 logger = logging.getLogger(__name__)
 

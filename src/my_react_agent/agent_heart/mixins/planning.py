@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional
 
-from agent_memory.data_structures import StepPlan, StepDecision as MemStepDecision
-from agent_core.agent_actions.action import Action
+from ...agent_memory.data_structures import StepPlan, StepDecision as MemStepDecision
+from ...agent_core.agent_actions.action import Action
 
 from ..logger import logger
 from ..trace_models import ReActStep
