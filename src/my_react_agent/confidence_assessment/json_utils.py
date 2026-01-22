@@ -170,11 +170,6 @@ def _extract_json_object(raw: str) -> Optional[Dict[str, Any]]:
 
 
 def _serialise_tool_result(result: Any) -> str:
-    """
-    Converts tool output to text for LLM grading.
-
-    Also works for your Evidence object because it likely has .content.
-    """
     if result is None:
         return ""
 
