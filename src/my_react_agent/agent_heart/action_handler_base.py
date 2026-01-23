@@ -21,10 +21,21 @@ class ActionHandler(ABC):
     def run(self, ctx: "ActionHandlerContext") -> Tuple[StepToolCall, StepResult, Step]:
         ...
 
+     def should_assess_result(
+        self,
+        ctx: "ActionHandlerContext",
+        *,
+        step: Step,
+        decision: "MemStepDecision",
+        step_result: StepResult,
+    ) -> bool:
+        return True
+
+
 
 def empty_tool_call(tool: str = "") -> StepToolCall:
     return StepToolCall(
-        tool_call_id=type("ToolCallIdProxy", (), {"generate": lambda: None})(),  # never used; placeholder
+        tool_call_id=type("ToolCallIdProxy", (), {"generate": lambda: None})(),  
         tool=tool,
         tool_input="",
         started_at=datetime.utcnow(),
