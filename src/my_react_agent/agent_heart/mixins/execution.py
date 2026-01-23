@@ -225,13 +225,12 @@ class ExecutionMixin(TextUtilsMixin):
         except Exception:
             return step, []
 
-    def _handle_low_confidence_tool_result(
+    def _handle_low_confidence_step_result(
         self,
         *,
         question: str,
-        action_name: str,
-        tool_name: str,
-        refined_input: str,
+        plan: StepPlan,
+        decision: MemStepDecision,
         raw_text: str,
         prior_unsuccessful_attempts: Optional[List[Dict[str, Any]]] = None,
     ) -> MemStepDecision:
@@ -253,12 +252,16 @@ class ExecutionMixin(TextUtilsMixin):
             '"message":"<short reason>"}'
         )
 
+        action_name = (decision.action or "")
+        tool_name = (decision.tool_name or "")
+        refined_input = (decision.tool_input or plan.instruction or "")
+
         tool_name_for_prompt = self._sanitise_to_text(tool_name)
         if not tool_name_for_prompt:
             tool_name_for_prompt = self._sanitise_to_text(action_name)
 
         prompt = (
-            "A previously used tool produced a result that looks unreliable or not well-aligned "
+            "A previously executed step produced a result that looks unreliable or not well-aligned "
             "with the current step task.\n\n"
             "You must now choose the BEST next action from this action catalogue:\n"
             f"{actions_catalog}\n\n"
@@ -276,22 +279,22 @@ class ExecutionMixin(TextUtilsMixin):
             "   tool_input to better match that tool's input format.\n"
             "5) Choose USE_TOOL only if at least one tool clearly fits the question. Otherwise pick ANSWER_BY_ITSELF "
             "   or STOP.\n\n"
-            f"Step task:\n{question}\n\n"
+            f"Step task:\n{plan.instruction}\n\n"
             "Previously used tool:\n"
             f"- name: {tool_name_for_prompt}\n"
             f"- input: {refined_input}\n\n"
-            "Tool result (possibly unreliable):\n"
+            "Step result (possibly unreliable):\n"
             f"{raw_text}\n\n"
             "Return STRICT JSON ONLY with this schema:\n"
             f"{schema}\n"
             "JSON:"
         )
 
-        logger.info("[ReActAgent._handle_low_confidence_tool_result] Prompt length=%d", len(prompt))
-        logger.info("[ReActAgent._handle_low_confidence_tool_result] Prompt:\n%s", prompt)
+        logger.info("[ReActAgent._handle_low_confidence_action_result] Prompt length=%d", len(prompt))
+        logger.info("[ReActAgent._handle_low_confidence_action_result] Prompt:\n%s", prompt)
 
         raw_decision = (self.planner_llm.generate(prompt) or "").strip()
-        logger.info("[ReActAgent._handle_low_confidence_tool_result] RAW: %s", raw_decision or "")
+        logger.info("[ReActAgent._handle_low_confidence_action_result] RAW: %s", raw_decision or "")
 
         data = self._safe_parse_json_object(raw_decision)
 
@@ -310,7 +313,7 @@ class ExecutionMixin(TextUtilsMixin):
         if action not in allowed_set:
             fallback = "ANSWER_BY_ITSELF" if "ANSWER_BY_ITSELF" in allowed_set else next(iter(allowed_set))
             logger.info(
-                "[ReActAgent._handle_low_confidence_tool_result] Invalid action '%s'; falling back to '%s'",
+                "[ReActAgent._handle_low_confidence_action_result] Invalid action '%s'; falling back to '%s'",
                 action,
                 fallback,
             )
@@ -328,7 +331,11 @@ class ExecutionMixin(TextUtilsMixin):
         except Exception:
             tried_triples = set()
 
-        triple = (self._sanitise_to_text(action).upper().strip(), self._sanitise_to_text(new_tool_name).strip(), self._sanitise_to_text(new_tool_input).strip())
+        triple = (
+            self._sanitise_to_text(action).upper().strip(),
+            self._sanitise_to_text(new_tool_name).strip(),
+            self._sanitise_to_text(new_tool_input).strip(),
+        )
         if triple in tried_triples:
             fallback = "ANSWER_BY_ITSELF" if "ANSWER_BY_ITSELF" in allowed_set else next(iter(allowed_set))
             action = fallback
@@ -336,7 +343,7 @@ class ExecutionMixin(TextUtilsMixin):
             new_tool_input = ""
 
         logger.info(
-            "[ReActAgent._handle_low_confidence_tool_result] Parsed action=%s new_tool=%s",
+            "[ReActAgent._handle_low_confidence_action_result] Parsed action=%s new_tool=%s",
             action,
             new_tool_name,
         )
@@ -347,24 +354,6 @@ class ExecutionMixin(TextUtilsMixin):
             tool_name=new_tool_name,
             tool_input=new_tool_input,
             message=message,
-        )
-
-    def _handle_low_confidence_step_result(
-        self,
-        *,
-        question: str,
-        plan: StepPlan,
-        decision: MemStepDecision,
-        raw_text: str,
-        prior_unsuccessful_attempts: Optional[List[Dict[str, Any]]] = None,
-    ) -> MemStepDecision:
-        return self._handle_low_confidence_tool_result(
-            question=plan.instruction,
-            action_name=(decision.action or ""),
-            tool_name=(decision.tool_name or ""),
-            refined_input=(decision.tool_input or plan.instruction or ""),
-            raw_text=raw_text,
-            prior_unsuccessful_attempts=prior_unsuccessful_attempts,
         )
 
     def _heuristic_facts_from_step_record(self, r: Dict[str, Any]) -> List[Dict[str, Any]]:
