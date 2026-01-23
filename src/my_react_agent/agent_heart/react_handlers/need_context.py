@@ -101,3 +101,6 @@ class NeedContextHandler(ActionHandler):
         )
         step3 = step_set_result(step2, step_result)
         return tool_call, step_result, step3
+
+    def should_assess_result(self, ctx, *, step, decision, step_result) -> bool:
+        return False

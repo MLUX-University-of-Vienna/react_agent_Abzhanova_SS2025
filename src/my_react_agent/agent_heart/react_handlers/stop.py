@@ -59,3 +59,6 @@ class StopHandler(ActionHandler):
         )
         final_step = step_set_result(step_with_evidence, step_result)
         return tool_call, step_result, final_step
+
+    def should_assess_result(self, ctx, *, step, decision, step_result) -> bool:
+        return False
