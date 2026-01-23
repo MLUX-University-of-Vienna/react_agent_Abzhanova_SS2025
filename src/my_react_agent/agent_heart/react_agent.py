@@ -22,7 +22,6 @@ from ..agent_core.agent_actions.action import Action
 
 from ..llm_adapters.llm_base import LLMBase
 from ..tool_management.tool_executor import ToolExecutor
-from .answer_generator import AnswerGenerator
 from ..tool_management.tool_query_refiner import ToolQueryRefiner
 from ..tool_management.tools.agent_tool import AgentTool
 from ..confidence_assessment.confidence_assessor import ConfidenceAssessor
@@ -74,7 +73,6 @@ class ReActAgent(
         self.tools = tools
 
         self.tool_executor = ToolExecutor(tools)
-        self.answer_generator = AnswerGenerator(summariser_llm)
 
         self.config = config or ReActAgentConfig()
         if max_steps is not None:

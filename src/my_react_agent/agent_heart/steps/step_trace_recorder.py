@@ -65,10 +65,6 @@ class StepTraceRecorder:
             return ""
 
     def _safe_extract_entity_names(self, text: str) -> List[str]:
-        """
-        Best-effort, non-invasive entity extraction.
-        This does NOT change prompts/logs and only runs if extractor exposes a known method.
-        """
         t = (text or "").strip()
         if not t:
             return []
