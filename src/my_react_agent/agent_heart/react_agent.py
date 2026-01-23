@@ -268,7 +268,11 @@ class ReActAgent(
         data = self._safe_parse_json_object(raw)
 
         found_raw = data.get("found", False)
-        found = bool(found_raw) if isinstance(found_raw, bool) else str(found_raw).strip().lower() in {"true", "1", "yes"}
+        found = bool(found_raw) if isinstance(found_raw, bool) else str(found_raw).strip().lower() in {
+            "true",
+            "1",
+            "yes",
+        }
 
         rewritten = self._sanitise_to_text(data.get("rewritten_task", "")).strip() or task
         if not found:
@@ -306,7 +310,9 @@ class ReActAgent(
 
         self.conversation_memory.update(question, final_answer, query_id=qid)
 
-    def _synthesise_final_answer(self, question: str, executed_trace: List[ReActStep], context_snippets: List[str]) -> str:
+    def _synthesise_final_answer(
+        self, question: str, executed_trace: List[ReActStep], context_snippets: List[str]
+    ) -> str:
         parts: List[str] = []
         for s in executed_trace:
             parts.append(
@@ -554,7 +560,11 @@ class ReActAgent(
                 executed_trace_for_prompt=executed_trace,
             )
 
-            max_step_attempts = int(getattr(self.config, "max_step_retries", 20)) if getattr(self.config, "assess_all_steps", True) else 0
+            max_step_attempts = (
+                int(getattr(self.config, "max_step_retries", 20))
+                if getattr(self.config, "assess_all_steps", True)
+                else 0
+            )
             step_attempt = 0
 
             need_context_attempt = 0
@@ -655,18 +665,35 @@ class ReActAgent(
                 except Exception:
                     pass
 
+                assess_this_action = True
+                try:
+                    assess_this_action = bool(
+                        handler.should_assess_result(
+                            handler_context,
+                            step=updated_step,
+                            decision=decision,
+                            step_result=step_result,
+                        )
+                    )
+                except Exception:
+                    assess_this_action = True
+
                 step_task = self._sanitise_to_text(updated_step.plan.instruction or question)
 
-                should_retry, new_decision, conf = self._should_retry_low_conf_step(
-                    step_task=step_task,
-                    updated_step=updated_step,
-                    decision=decision,
-                    action_name=action_name,
-                    step_attempt=step_attempt,
-                    max_step_attempts=max_step_attempts,
-                    should_stop=should_stop,
-                    prior_unsuccessful_attempts=unsuccessful_step_attempts,
-                )
+                if assess_this_action:
+                    should_retry, new_decision, conf = self._should_retry_low_conf_step(
+                        step_task=step_task,
+                        updated_step=updated_step,
+                        decision=decision,
+                        action_name=action_name,
+                        step_attempt=step_attempt,
+                        max_step_attempts=max_step_attempts,
+                        should_stop=should_stop,
+                        prior_unsuccessful_attempts=unsuccessful_step_attempts,
+                    )
+                else:
+                    should_retry, new_decision, conf = False, None, None
+
                 if should_retry and new_decision is not None:
                     try:
                         used_tool_name = getattr(decision, "tool_name", "") or ""
@@ -771,7 +798,9 @@ class ReActAgent(
                                 ReActStep(
                                     index=updated_step.plan.index,
                                     thought=thought_text,
-                                    action_kind=(updated_step.decision.action if updated_step.decision else decision.action),
+                                    action_kind=(
+                                        updated_step.decision.action if updated_step.decision else decision.action
+                                    ),
                                     action_tool=tool_nm,
                                     action_input=tool_in,
                                     observation=obs,
