@@ -5,7 +5,6 @@ from typing import Any, Optional
 
 from ..llm_adapters.llm_base import LLMBase
 
-
 class ParameterAssessor(ABC):
     def __init__(
         self,

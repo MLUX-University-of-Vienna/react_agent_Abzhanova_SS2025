@@ -1,15 +1,12 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from ..llm_adapters.llm_base import LLMBase
 
-from .models import (
-    LLMEntityAlignment,
-    LLMAnswerQuality,
-    LLMAnswerRealism,
-)
+from .models import ParameterRating
+from .parameter_assessor import ParameterAssessor
 
 from .json_utils import (
     _safe_text,
@@ -17,15 +14,10 @@ from .json_utils import (
     _serialise_tool_result,
 )
 
-from .entity_alignment_assessor import EntityAlignmentAssessor
-from .answer_quality_assessor import AnswerQualityAssessor
-from .answer_realism_assessor import AnswerRealismAssessor
-
 logger = logging.getLogger(__name__)
 
 
 class ConfidenceAssessor:
-
     def __init__(
         self,
         llm: LLMBase,
@@ -36,6 +28,7 @@ class ConfidenceAssessor:
         include_tool_result_in_quality: bool = True,
         tool_result_max_chars: int = 12000,
         log_parse_failures: bool = True,
+        parameter_assessors: Optional[List[ParameterAssessor]] = None,
     ):
         self.llm = llm
         self.default_fallback = _clamp01(default_fallback)
@@ -45,21 +38,7 @@ class ConfidenceAssessor:
         self.tool_result_max_chars = max(0, int(tool_result_max_chars))
         self.log_parse_failures = bool(log_parse_failures)
 
-        self.entity_alignment_assessor = EntityAlignmentAssessor(
-            llm=self.llm,
-            default_fallback=self.default_fallback,
-            log_parse_failures=self.log_parse_failures,
-        )
-        self.answer_quality_assessor = AnswerQualityAssessor(
-            llm=self.llm,
-            default_fallback=self.default_fallback,
-            log_parse_failures=self.log_parse_failures,
-        )
-        self.answer_realism_assessor = AnswerRealismAssessor(
-            llm=self.llm,
-            default_fallback=self.default_fallback,
-            log_parse_failures=self.log_parse_failures,
-        )
+        self.parameter_assessors: List[ParameterAssessor] = list(parameter_assessors or [])
 
         logger.info(
             "[ConfidenceAssessor.__init__] fallback=%.2f max_decimals=%d mismatch_penalty=%.2f "
@@ -87,9 +66,7 @@ class ConfidenceAssessor:
         if self.tool_result_max_chars and len(summary_text) > self.tool_result_max_chars:
             summary_text = summary_text[: self.tool_result_max_chars].rstrip() + "..."
 
-        entity = self._llm_entity_alignment(query_text=task_text, answer_text=summary_text)
-
-        quality = self._llm_answer_quality(
+        ratings = self._run_parameter_assessors(
             query_text=task_text,
             answer_text=summary_text,
             tool_result_text="",
@@ -97,23 +74,24 @@ class ConfidenceAssessor:
             result_timestamp=result_timestamp,
         )
 
-        realism = self._llm_answer_realism(
-            query_text=task_text,
-            answer_text=summary_text,
-            tool_result_text="",
-            knowledge_cutoff=knowledge_cutoff,
-            result_timestamp=result_timestamp,
-        )
+        entity = self._pick_entity_rating(ratings)
+        quality = self._pick_named_rating(ratings, {"answer_quality", "quality"}, fallback_name="answer_quality")
+        realism = self._pick_named_rating(ratings, {"answer_realism", "realism"}, fallback_name="answer_realism")
 
-        if not entity.same_entity:
-            conf = entity.confidence * (1.0 - self.entity_mismatch_penalty)
+        entity_same = bool((entity.meta or {}).get("same_entity", True))
+        entity_conf = float(entity.score)
+        quality_score = float(quality.score)
+        realism_score = float(realism.score)
+
+        if not entity_same:
+            conf = entity_conf * (1.0 - self.entity_mismatch_penalty)
             out = self._round_and_clamp(conf)
             logger.info(
                 "[ConfidenceAssessor.assess_step_summary] entity_same=False entity_conf=%.3f quality=%.3f realism=%.3f "
                 "-> conf=%.3f (penalized) reason_entity=%s reason_quality=%s reason_realism=%s",
-                entity.confidence,
-                quality.score,
-                realism.score,
+                entity_conf,
+                quality_score,
+                realism_score,
                 out,
                 entity.reason,
                 quality.reason,
@@ -121,14 +99,14 @@ class ConfidenceAssessor:
             )
             return out
 
-        conf = (entity.confidence + quality.score + realism.score) / 3.0
+        conf = self._mean_score(ratings)
         out = self._round_and_clamp(conf)
         logger.info(
             "[ConfidenceAssessor.assess_step_summary] entity_same=True entity_conf=%.3f quality=%.3f realism=%.3f "
             "-> conf=%.3f reason_entity=%s reason_quality=%s reason_realism=%s",
-            entity.confidence,
-            quality.score,
-            realism.score,
+            entity_conf,
+            quality_score,
+            realism_score,
             out,
             entity.reason,
             quality.reason,
@@ -152,33 +130,34 @@ class ConfidenceAssessor:
         if self.tool_result_max_chars and len(tool_text) > self.tool_result_max_chars:
             tool_text = tool_text[: self.tool_result_max_chars].rstrip() + "..."
 
-        entity = self._llm_entity_alignment(query_text=query_text, answer_text=answer_text)
+        tool_text_for_assessors = tool_text if self.include_tool_result_in_quality else ""
 
-        quality = self._llm_answer_quality(
+        ratings = self._run_parameter_assessors(
             query_text=query_text,
             answer_text=answer_text,
-            tool_result_text=(tool_text if self.include_tool_result_in_quality else ""),
+            tool_result_text=tool_text_for_assessors,
             knowledge_cutoff=knowledge_cutoff,
             result_timestamp=result_timestamp,
         )
 
-        realism = self._llm_answer_realism(
-            query_text=query_text,
-            answer_text=answer_text,
-            tool_result_text=(tool_text if self.include_tool_result_in_quality else ""),
-            knowledge_cutoff=knowledge_cutoff,
-            result_timestamp=result_timestamp,
-        )
+        entity = self._pick_entity_rating(ratings)
+        quality = self._pick_named_rating(ratings, {"answer_quality", "quality"}, fallback_name="answer_quality")
+        realism = self._pick_named_rating(ratings, {"answer_realism", "realism"}, fallback_name="answer_realism")
 
-        if not entity.same_entity:
-            conf = entity.confidence * (1.0 - self.entity_mismatch_penalty)
+        entity_same = bool((entity.meta or {}).get("same_entity", True))
+        entity_conf = float(entity.score)
+        quality_score = float(quality.score)
+        realism_score = float(realism.score)
+
+        if not entity_same:
+            conf = entity_conf * (1.0 - self.entity_mismatch_penalty)
             out = self._round_and_clamp(conf)
             logger.info(
                 "[ConfidenceAssessor.assess] entity_same=False entity_conf=%.3f quality=%.3f realism=%.3f "
                 "-> conf=%.3f (penalized) reason_entity=%s reason_quality=%s reason_realism=%s",
-                entity.confidence,
-                quality.score,
-                realism.score,
+                entity_conf,
+                quality_score,
+                realism_score,
                 out,
                 entity.reason,
                 quality.reason,
@@ -186,14 +165,14 @@ class ConfidenceAssessor:
             )
             return out
 
-        conf = (entity.confidence + quality.score + realism.score) / 3.0
+        conf = self._mean_score(ratings)
         out = self._round_and_clamp(conf)
         logger.info(
             "[ConfidenceAssessor.assess] entity_same=True entity_conf=%.3f quality=%.3f realism=%.3f "
             "-> conf=%.3f reason_entity=%s reason_quality=%s reason_realism=%s",
-            entity.confidence,
-            quality.score,
-            realism.score,
+            entity_conf,
+            quality_score,
+            realism_score,
             out,
             entity.reason,
             quality.reason,
@@ -201,11 +180,7 @@ class ConfidenceAssessor:
         )
         return out
 
-
-    def _llm_entity_alignment(self, *, query_text: str, answer_text: str) -> LLMEntityAlignment:
-        return self.entity_alignment_assessor.assess(query_text=query_text, answer_text=answer_text)
-
-    def _llm_answer_quality(
+    def _run_parameter_assessors(
         self,
         *,
         query_text: str,
@@ -213,31 +188,88 @@ class ConfidenceAssessor:
         tool_result_text: str,
         knowledge_cutoff: Optional[str],
         result_timestamp: Optional[str],
-    ) -> LLMAnswerQuality:
-        return self.answer_quality_assessor.assess(
-            query_text=query_text,
-            answer_text=answer_text,
-            tool_result_text=tool_result_text,
-            knowledge_cutoff=knowledge_cutoff,
-            result_timestamp=result_timestamp,
+    ) -> Dict[str, ParameterRating]:
+        out: Dict[str, ParameterRating] = {}
+
+        if not self.parameter_assessors:
+            out["fallback"] = ParameterRating(
+                name="fallback",
+                score=self.default_fallback,
+                reason="fallback",
+                meta={},
+            )
+            return out
+
+        for a in self.parameter_assessors:
+            try:
+                r = a.assess(
+                    query_text=query_text,
+                    answer_text=answer_text,
+                    tool_result_text=tool_result_text,
+                    knowledge_cutoff=knowledge_cutoff,
+                    result_timestamp=result_timestamp,
+                )
+            except Exception:
+                r = None
+
+            if isinstance(r, ParameterRating) and r.name:
+                out[r.name] = r
+
+        if not out:
+            out["fallback"] = ParameterRating(
+                name="fallback",
+                score=self.default_fallback,
+                reason="fallback",
+                meta={},
+            )
+
+        return out
+
+    def _pick_entity_rating(self, ratings: Dict[str, ParameterRating]) -> ParameterRating:
+        for r in ratings.values():
+            try:
+                if isinstance(r.meta, dict) and "same_entity" in r.meta:
+                    return r
+            except Exception:
+                continue
+
+        for key in ("entity_alignment", "entity"):
+            if key in ratings:
+                return ratings[key]
+
+        return ParameterRating(
+            name="entity_alignment",
+            score=self.default_fallback,
+            reason="fallback",
+            meta={"same_entity": True},
         )
 
-    def _llm_answer_realism(
+    def _pick_named_rating(
         self,
+        ratings: Dict[str, ParameterRating],
+        names: set,
         *,
-        query_text: str,
-        answer_text: str,
-        tool_result_text: str,
-        knowledge_cutoff: Optional[str],
-        result_timestamp: Optional[str],
-    ) -> LLMAnswerRealism:
-        return self.answer_realism_assessor.assess(
-            query_text=query_text,
-            answer_text=answer_text,
-            tool_result_text=tool_result_text,
-            knowledge_cutoff=knowledge_cutoff,
-            result_timestamp=result_timestamp,
-        )
+        fallback_name: str,
+    ) -> ParameterRating:
+        for n in names:
+            if n in ratings:
+                return ratings[n]
+        return ParameterRating(name=fallback_name, score=self.default_fallback, reason="fallback", meta={})
+
+    def _mean_score(self, ratings: Dict[str, ParameterRating]) -> float:
+        scores: List[float] = []
+        for r in ratings.values():
+            try:
+                if isinstance(r.meta, dict) and r.meta.get("exclude_from_mean", False):
+                    continue
+            except Exception:
+                pass
+            scores.append(_clamp01(getattr(r, "score", self.default_fallback)))
+
+        if not scores:
+            return float(self.default_fallback)
+
+        return sum(scores) / float(len(scores))
 
     def _round_and_clamp(self, v: float) -> float:
         v = _clamp01(v)
@@ -246,7 +278,4 @@ class ConfidenceAssessor:
 
 __all__ = [
     "ConfidenceAssessor",
-    "LLMEntityAlignment",
-    "LLMAnswerQuality",
-    "LLMAnswerRealism",
 ]
