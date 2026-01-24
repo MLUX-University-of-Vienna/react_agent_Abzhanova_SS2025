@@ -25,6 +25,7 @@ from ..tool_management.tool_executor import ToolExecutor
 from ..tool_management.tool_query_refiner import ToolQueryRefiner
 from ..tool_management.tools.agent_tool import AgentTool
 from ..confidence_assessment.confidence_assessor import ConfidenceAssessor
+from ..confidence_assessment.parameter_assessor import ParameterAssessor
 
 from .logger import logger
 from .config import ReActAgentConfig
@@ -57,6 +58,7 @@ class ReActAgent(
         summariser_llm: LLMBase,
         confidence_llm: LLMBase,
         entity_extractor: EntityExtractor,
+        refiner_llm: LLMBase,
         tools: Dict[str, AgentTool],
         *,
         max_steps: int = None,
@@ -64,12 +66,14 @@ class ReActAgent(
         config: Optional[ReActAgentConfig] = None,
         step_actions: Optional[List[Action]] = None,
         low_conf_actions: Optional[List[Action]] = None,
+        parameter_assessors: Optional[List[ParameterAssessor]] = None,
     ):
         if not tools:
             raise ValueError("ReActAgent requires at least one tool")
 
         self.planner_llm = planner_llm
         self.summariser_llm = summariser_llm
+        self.refiner_llm = refiner_llm
         self.tools = tools
 
         self.tool_executor = ToolExecutor(tools)
@@ -79,7 +83,10 @@ class ReActAgent(
             self.config.max_steps = int(max_steps)
 
         try:
-            self.confidence_assessor = ConfidenceAssessor(llm=confidence_llm)
+            self.confidence_assessor = ConfidenceAssessor(
+                llm=confidence_llm,
+                parameter_assessors=parameter_assessors,
+            )
         except Exception as e:
             logger.warning(
                 "[ReActAgent.__init__] Failed to initialise ConfidenceAssessor error=%r; continuing without tool/step gating",
@@ -95,7 +102,7 @@ class ReActAgent(
         self.conversation_memory = ConversationMemory(max_turns=5)
         self.query_memory = QueryMemory()
 
-        self.tool_query_refiner = ToolQueryRefiner(llm=self.summariser_llm, max_chars=300)
+        self.tool_query_refiner = ToolQueryRefiner(llm=self.refiner_llm, max_chars=300)
         self.entity_store = entity_store
 
         self.fact_store: Dict[str, Any] = {}
