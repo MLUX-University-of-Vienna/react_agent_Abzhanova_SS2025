@@ -13,19 +13,8 @@ class ToolResultAssessment:
 
 
 @dataclasses.dataclass(frozen=True)
-class LLMEntityAlignment:
-    same_entity: bool
-    confidence: float
+class ParameterRating:
+    name: str
+    score: float
     reason: str
-
-
-@dataclasses.dataclass(frozen=True)
-class LLMAnswerQuality:
-    score: float  
-    reason: str
-
-
-@dataclasses.dataclass(frozen=True)
-class LLMAnswerRealism:
-    score: float  
-    reason: str
+    meta: dict = dataclasses.field(default_factory=dict)
