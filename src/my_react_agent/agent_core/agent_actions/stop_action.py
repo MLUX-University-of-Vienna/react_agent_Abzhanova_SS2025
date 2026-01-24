@@ -9,7 +9,7 @@ class StopAction(Action):
         return "STOP"
 
     @property
-    def instructions(self) -> str:
+    def default_instructions(self) -> str:
         return (
             "End the session immediately and return a short acknowledgement. "
             "Use only when the user explicitly cancels, when a hard boundary is reached, "
@@ -17,7 +17,7 @@ class StopAction(Action):
         )
 
     @property
-    def when_to_pick(self) -> str:
+    def default_when_to_pick(self) -> str:
         return (
-            "Pick when many times "
+            "Pick when >3 times was choosen the same action with same input."
         )   

@@ -9,13 +9,13 @@ class AnswerByItselfAction(Action):
         return "ANSWER_BY_ITSELF"
 
     @property
-    def instructions(self) -> str:
+    def default_instructions(self) -> str:
         return (
             "Answers using only the LLM's general knowledge. "
         )
 
     @property
-    def when_to_pick(self) -> str:
+    def default_when_to_pick(self) -> str:
         return (
             "Pick ONLY when the step can be answered from stable, textbook-level facts "
             "(very unlikely to change over 3+ years)."

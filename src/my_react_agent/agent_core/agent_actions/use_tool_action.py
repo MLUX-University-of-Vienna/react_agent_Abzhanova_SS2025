@@ -9,7 +9,7 @@ class UseToolAction(Action):
         return "USE_TOOL"
 
     @property
-    def instructions(self) -> str:
+    def default_instructions(self) -> str:
         return (
             "Invoke exactly ONE tool to complete the current step.\n"
             "Choose the most appropriate tool based strictly on its description.\n"
@@ -18,5 +18,5 @@ class UseToolAction(Action):
         )
 
     @property
-    def when_to_pick(self) -> str:
+    def default_when_to_pick(self) -> str:
         return "Pick when user asks about real time data and at least one available tool can reliably complete the current step in one deterministic call."
