@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from .action import Action
 
-
 class UseToolAction(Action):
     @property
     def name(self) -> str:
