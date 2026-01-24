@@ -18,14 +18,14 @@ class AnswerRealismAssessor(ParameterAssessor):
         super().__init__(llm, default_fallback=default_fallback, log_parse_failures=log_parse_failures)
 
     def assess(
-        self,
-        *,
-        query_text: str,
-        answer_text: str,
-        tool_result_text: str = "",
+        self, 
+        *, 
+        query_text: str, 
+        answer_text: str, 
+        tool_result_text: str = "", 
         knowledge_cutoff: Optional[str] = None,
-        result_timestamp: Optional[str] = None,
-    ) -> LLMAnswerRealism:
+        result_timestamp: Optional[str] = None, 
+    ) -> ParameterRating:
         schema = {"score": 0.0, "reason": "short"}
         kc = f"Knowledge cutoff: {knowledge_cutoff}\n" if knowledge_cutoff else ""
         ts = f"Tool result timestamp: {result_timestamp}\n" if result_timestamp else ""
@@ -70,4 +70,9 @@ class AnswerRealismAssessor(ParameterAssessor):
         except Exception as e:
             logger.warning("[AnswerRealismAssessor] LLM failed error=%r raw=%r", e, raw[:500])
 
-        return LLMAnswerRealism(score=_round2(score), reason=reason)
+        return ParameterRating(
+            name="answer_realism",
+            score=_round2(score),
+            reason=reason,
+            meta={},
+        )

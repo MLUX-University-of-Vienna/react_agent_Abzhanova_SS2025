@@ -25,7 +25,7 @@ class AnswerQualityAssessor(ParameterAssessor):
         tool_result_text: str = "",
         knowledge_cutoff: Optional[str] = None,
         result_timestamp: Optional[str] = None,
-    ) -> LLMAnswerQuality:
+    ) -> ParameterRating:
         schema = {"score": 0.0, "reason": "short"}
         kc = f"Knowledge cutoff: {knowledge_cutoff}\n" if knowledge_cutoff else ""
         ts = f"Tool result timestamp: {result_timestamp}\n" if result_timestamp else ""
@@ -74,4 +74,9 @@ class AnswerQualityAssessor(ParameterAssessor):
         except Exception as e:
             logger.warning("[AnswerQualityAssessor] LLM failed error=%r raw=%r", e, raw[:500])
 
-        return LLMAnswerQuality(score=_round2(score), reason=reason)
+        return ParameterRating(
+            name="answer_quality",
+            score=_round2(score),
+            reason=reason,
+            meta={},
+        )

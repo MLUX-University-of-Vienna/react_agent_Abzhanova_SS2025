@@ -27,5 +27,5 @@ class ParameterAssessor(ABC):
         tool_result_text: str = "",
         knowledge_cutoff: Optional[str] = None,
         result_timestamp: Optional[str] = None,
-    ) -> Any:
+    ) -> ParameterRating:
         raise NotImplementedError

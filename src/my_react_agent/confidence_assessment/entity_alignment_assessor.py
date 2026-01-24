@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 import logging
+from typing import Optional
 
 from ..llm_adapters.llm_base import LLMBase
 
-from .models import LLMEntityAlignment
+from .models import ParameterRating
 from .parameter_assessor import ParameterAssessor
 from .json_utils import _extract_json_object, _coerce_score_0_1, _pick_reason, _round2
 
@@ -22,9 +23,9 @@ class EntityAlignmentAssessor(ParameterAssessor):
         query_text: str,
         answer_text: str,
         tool_result_text: str = "",
-        knowledge_cutoff=None,
-        result_timestamp=None,
-    ) -> LLMEntityAlignment:
+        knowledge_cutoff: Optional[str] = None,
+        result_timestamp: Optional[str] = None,
+    ) -> ParameterRating:
         schema = {"same_entity": True, "confidence": 0.0, "reason": "short"}
         prompt = (
             "You are a strict evaluator for a QA system.\n\n"
@@ -60,4 +61,11 @@ class EntityAlignmentAssessor(ParameterAssessor):
         except Exception as e:
             logger.warning("[EntityAlignmentAssessor] LLM failed error=%r raw=%r", e, raw[:500])
 
-        return LLMEntityAlignment(same_entity=same_entity, confidence=_round2(conf), reason=reason)
+        score = conf if same_entity else 0.0
+
+        return ParameterRating(
+            name="entity_alignment",
+            score=_round2(score),
+            reason=reason,
+            meta={"same_entity": same_entity, "raw_confidence": _round2(conf)},
+        )
