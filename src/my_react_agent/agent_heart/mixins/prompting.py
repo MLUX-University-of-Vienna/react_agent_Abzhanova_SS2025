@@ -11,7 +11,7 @@ class PromptingMixin:
 
     def _render_prompt(self, pid: PromptId, **vars: Any) -> str:
         try:
-            return self.prompts.render(pid, **vars)
+            return self.prompts.render(pid.value, **vars)
         except Exception as e:
             logger.exception("[PromptingMixin] Failed to render prompt %s: %r", pid, e)
             raise

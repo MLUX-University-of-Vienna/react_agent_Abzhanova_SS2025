@@ -11,6 +11,7 @@ from .tools.agent_tool import AgentTool
 
 from ..agent_prompts.prompts_ids import PromptId
 from ..agent_prompts.prompt_registry import PromptRegistry
+from ..agent_prompts.prompted_component import PromptedComponent
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ class RefinerPolicy:
     external_validator: Optional[Callable[[str], bool]] = None
 
 
-class ToolQueryRefiner:
+class ToolQueryRefiner(PromptedComponent):
     def __init__(self, llm: LLMBase, *, prompts: PromptRegistry, max_chars: int = 300):
         super().__init__(prompts=prompts)
         self.llm = llm
