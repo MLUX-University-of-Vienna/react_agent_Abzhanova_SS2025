@@ -9,6 +9,9 @@ from typing import Optional, List, Callable, Dict, Any
 from ..llm_adapters.llm_base import LLMBase
 from .tools.agent_tool import AgentTool
 
+from ..agent_prompts.prompts_ids import PromptId
+from ..agent_prompts.prompt_registry import PromptRegistry
+
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -21,10 +24,10 @@ class RefinerPolicy:
 
 
 class ToolQueryRefiner:
-    def __init__(self, llm: LLMBase, max_chars: int = 300):
+    def __init__(self, llm: LLMBase, *, prompts: PromptRegistry, max_chars: int = 300):
+        super().__init__(prompts=prompts)
         self.llm = llm
         self.max_chars = int(max_chars)
-        logger.info("[ToolQueryRefiner.__init__] Initialized with max_chars=%d", self.max_chars)
 
     def refine(
         self,
@@ -94,36 +97,19 @@ class ToolQueryRefiner:
                 logger.info("[refine] calculator fast-path: %r -> %r", expr, out)
                 return out
 
-        json_header = f'{{ "tool_input": "<string, <={hard_cap} chars>", "reason": "<short>" }}'
-
-        global_guidance = (
-            "Global rules:\n"
-            "1) Use USER QUESTION as the source of truth for facts and numbers.\n"
-            "2) Use DEPENDENT STEP RESULTS as additional facts (when relevant).\n"
-            "3) Do not invent facts. If something is missing, write the best tool_input you can from available context.\n"
-            "4) Produce a NORMAL tool input string (not URL parameters).\n"
-            "5) Obey the TOOL INSTRUCTIONS / INPUT FORMAT / REGEX.\n"
-            "6) Output STRICT JSON only.\n"
-        )
-
-        prompt = (
-            "You convert (USER QUESTION + CURRENT STEP TASK) into the exact INPUT STRING required by one TOOL.\n"
-            f"Return STRICT JSON only: {json_header}\n\n"
-            f"{global_guidance}\n"
-            "TOOL CONTRACT:\n"
-            f"Name: {tool_name}\n"
-            f"Description: {tool_desc}\n"
-            f"Instructions: {tool_instr}\n"
-            f"Input format: {tool_fmt}\n"
-            f"Input regex (optional): {tool_regex or ''}\n"
-            f"Forbidden (optional): {tool_forbid}\n"
-            f"Examples (optional):\n{examples}\n\n"
-            "CONTEXT:\n"
-            f"USER QUESTION: {user_question!r}\n"
-            f"CURRENT STEP TASK: {step_task!r}\n\n"
-            "DEPENDENT STEP RESULTS (if any):\n"
-            f"{dependency_block}\n\n"
-            "JSON:"
+        prompt = self._render_prompt(
+            PromptId.TOOL_QUERY_REFINER_MAIN,       
+            hard_cap=hard_cap,
+            tool_name=str(tool_name),
+            tool_desc=str(tool_desc or ""),
+            tool_instr=str(tool_instr or ""),
+            tool_fmt=str(tool_fmt or ""),
+            tool_regex=str(tool_regex or ""),
+            tool_forbid=str(tool_forbid or ""),
+            examples=examples or "",
+            user_question=user_question,
+            step_task=step_task,
+            dependency_block=dependency_block,
         )
 
         logger.debug("[refine] prompt_len=%d", len(prompt))
@@ -188,7 +174,6 @@ class ToolQueryRefiner:
                         tool_input = repaired
                         logger.info("[refine] repair produced new candidate=%r", tool_input)
 
-                        # re-check
                         if policy.require_bare_number_match:
                             bare_num_ok = (not self._is_bare_number(tool_input)) or self._is_bare_number(step_task)
                         if tool_regex:
@@ -346,23 +331,16 @@ class ToolQueryRefiner:
         tool_fmt: str,
         tool_regex: Optional[str],
     ) -> Optional[str]:
-        repair_prompt = (
-            "You will minimally fix a tool input string.\n"
-            'Return STRICT JSON only: { "tool_input": "<corrected string>" }\n\n'
-            f"TOOL NAME: {tool_name}\n"
-            f"DESCRIPTION: {tool_desc}\n"
-            f"INSTRUCTIONS: {tool_instr}\n"
-            f"INPUT FORMAT: {tool_fmt}\n"
-            f"INPUT REGEX (optional): {tool_regex or ''}\n\n"
-            f"USER QUESTION: {user_question!r}\n"
-            f"CURRENT STEP TASK: {step_task!r}\n"
-            f"CURRENT CANDIDATE: {candidate!r}\n\n"
-            "Constraints:\n"
-            "- Do not add new facts.\n"
-            "- Keep the user's intent and the step task.\n"
-            "- Make the smallest edits necessary to comply with the tool contract/regex.\n"
-            "- Output JSON only.\n"
-            "JSON:"
+        repair_prompt = self._render_prompt(
+            PromptId.TOOL_QUERY_REFINER_REPAIR,
+            tool_name=tool_name,
+            tool_desc=tool_desc,
+            tool_instr=tool_instr,
+            tool_fmt=tool_fmt,
+            tool_regex=tool_regex or "",
+            user_question=user_question,
+            step_task=step_task,
+            candidate=candidate,
         )
         try:
             raw = (self.llm.generate(repair_prompt) or "").strip()
