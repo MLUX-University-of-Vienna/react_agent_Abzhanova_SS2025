@@ -8,6 +8,9 @@ from ..llm_adapters.llm_base import LLMBase
 from .models import ParameterRating
 from .parameter_assessor import ParameterAssessor
 
+from ..agent_prompts.prompts_ids import PromptId
+from ..agent_prompts.prompt_registry import PromptRegistry
+
 from .json_utils import (
     _safe_text,
     _clamp01,

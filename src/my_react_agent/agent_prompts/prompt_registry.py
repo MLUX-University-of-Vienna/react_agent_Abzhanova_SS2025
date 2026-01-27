@@ -1,39 +1,37 @@
 from dataclasses import dataclass
-from typing import Dict, Optional, Iterable, Union
-
-from .prompt_template import PromptTemplate
-from .prompts_ids import PromptId
-
-PromptKey = Union[str, PromptId]
+from typing import Dict, Iterable, Optional
 
 @dataclass
 class PromptRegistry:
-    _defaults: Dict[str, PromptTemplate]
-    _overrides: Optional[Dict[str, PromptTemplate]] = None
+    _defaults: Dict[str, "PromptTemplate"]
+    _overrides: Optional[Dict[str, "PromptTemplate"]] = None
 
     def __post_init__(self):
         if self._overrides is None:
             self._overrides = {}
 
-    def _key(self, prompt_id: PromptKey) -> str:
-        return prompt_id.value if isinstance(prompt_id, PromptId) else str(prompt_id)
+    def get(self, prompt_id: str) -> "PromptTemplate":
+        if prompt_id in self._overrides:
+            return self._overrides[prompt_id]
+        if prompt_id in self._defaults:
+            return self._defaults[prompt_id]
+        raise KeyError(f"Unknown prompt_id: {prompt_id}")
 
-    def get(self, prompt_id: PromptKey) -> PromptTemplate:
-        k = self._key(prompt_id)
-        return self._overrides.get(k) or self._defaults[k]
+    def set(self, prompt_id: str, template: "PromptTemplate") -> None:
+        if prompt_id not in self._defaults:
+            raise KeyError(f"Unknown prompt_id: {prompt_id}. Register a default first.")
+        self._overrides[prompt_id] = template
 
-    def set(self, prompt_id: PromptKey, template: PromptTemplate) -> None:
-        k = self._key(prompt_id)
-        if k not in self._defaults:
-            raise KeyError(f"Unknown prompt_id: {k}")
-        self._overrides[k] = template
+    def register_default(self, prompt_id: str, template: "PromptTemplate") -> None:
+        if prompt_id in self._defaults:
+            return
+        self._defaults[prompt_id] = template
 
-    def reset(self, prompt_id: PromptKey) -> None:
-        k = self._key(prompt_id)
-        self._overrides.pop(k, None)
+    def reset(self, prompt_id: str) -> None:
+        self._overrides.pop(prompt_id, None)
 
     def list_ids(self) -> Iterable[str]:
-        return self._defaults.keys()
+        return set(self._defaults.keys()) | set(self._overrides.keys())
 
-    def render(self, prompt_id: PromptKey, **kwargs) -> str:
+    def render(self, prompt_id: str, **kwargs) -> str:
         return self.get(prompt_id).render(**kwargs)
