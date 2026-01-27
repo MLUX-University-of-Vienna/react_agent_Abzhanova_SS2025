@@ -234,7 +234,6 @@ class PlanningMixin(TextUtilsMixin):
         if step_task:
             tool_input = step_task
 
-        # FIX: if tool_input is empty, default to the step instruction (step task)
         if not (tool_input or "").strip():
             tool_input = self._sanitise_to_text(plan.instruction or "")
 

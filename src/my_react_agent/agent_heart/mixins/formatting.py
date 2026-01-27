@@ -44,6 +44,10 @@ class FormattingMixin(TextUtilsMixin):
             msg = self._ensure_sentence(message or "Stopping here.")
             return f"Act {index}: {msg}"
 
+        if a == "RESOLVE_PRONOUNS_AND_OMITTED ENTITIES":
+            text = f"I need context: {ti or 'focused micro-task'}."
+            return f"Act {index}: {self._ensure_sentence(text)}"
+
         return f"Act {index}: {self._ensure_sentence(a.title())}"
 
     def _format_observation_line(self, index: int, text: str) -> str:
