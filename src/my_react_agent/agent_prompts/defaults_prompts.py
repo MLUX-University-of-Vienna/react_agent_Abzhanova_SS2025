@@ -310,11 +310,20 @@ DEFAULT_PROMPTS: dict[PromptId, PromptTemplate] = {
             "- confidence MUST be one of: 0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0\n"
             "- Do NOT include any extra keys.\n\n"
             "Schema example: {schema_example}\n\n"
+            "{knowledge_cutoff_block}{result_timestamp_block}"
             "QUESTION:\n{question}\n\n"
             "ANSWER:\n{answer}\n\n"
+            "{tool_result_block}\n"
             "JSON:"
         ),
-        required_vars={"schema_example", "question", "answer"},
+        required_vars={
+            "schema_example",
+            "knowledge_cutoff_block",
+            "result_timestamp_block",
+            "question",
+            "answer",
+            "tool_result_block",
+        },
         description="Assess whether answer addresses the same entity/entities as the question",
         version="1",
     ),

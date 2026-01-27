@@ -10,12 +10,14 @@ from .models import ParameterRating
 from .parameter_assessor import ParameterAssessor
 from .json_utils import _extract_json_object, _coerce_score_0_1, _pick_reason, _round2
 
+from ..agent_prompts.prompts_ids import PromptId
+from ..agent_prompts.prompt_registry import PromptRegistry
+
 logger = logging.getLogger(__name__)
 
-
 class EntityAlignmentAssessor(ParameterAssessor):
-    def __init__(self, llm: LLMBase, *, default_fallback: float = 0.5, log_parse_failures: bool = True):
-        super().__init__(llm, default_fallback=default_fallback, log_parse_failures=log_parse_failures)
+    def __init__(self, llm: LLMBase, *, prompts: PromptRegistry, default_fallback: float = 0.5, log_parse_failures: bool = True):
+        super().__init__(llm, prompts=prompts, default_fallback=default_fallback, log_parse_failures=log_parse_failures)
 
     def assess(
         self,
@@ -27,21 +29,14 @@ class EntityAlignmentAssessor(ParameterAssessor):
         result_timestamp: Optional[str] = None,
     ) -> ParameterRating:
         schema = {"same_entity": True, "confidence": 0.0, "reason": "short"}
-        prompt = (
-            "You are a strict evaluator for a QA system.\n\n"
-            "Task: Decide whether the ANSWER is about the SAME REAL-WORLD ENTITY (or entities) as the QUESTION.\n"
-            "Be careful with similarly-named words.\n"
-            "If the answer is about a different entity with the same name, that is NOT the same entity.\n"
-            "If the requested fact is missing, give 0. \n\n"
-            "Output rules (CRITICAL):\n"
-            "- Output MUST be a SINGLE JSON object and NOTHING else.\n"
-            "- Keys MUST be exactly: same_entity, confidence, reason.\n"
-            "- confidence MUST be one of: 0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0\n"
-            "- Do NOT include any extra keys.\n\n"
-            f"Schema example: {json.dumps(schema)}\n\n"
-            f"QUESTION:\n{query_text}\n\n"
-            f"ANSWER:\n{answer_text}\n\n"
-            "JSON:"
+        prompt = self._render_prompt(
+            PromptId.CONF_ENTITY_ALIGNMENT,
+            schema_json=json.dumps(schema),
+            query_text=query_text,
+            answer_text=answer_text,
+            tool_result_text=tool_result_text or "",
+            knowledge_cutoff=knowledge_cutoff or "",
+            result_timestamp=result_timestamp or "",
         )
 
         same_entity = False
