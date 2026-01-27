@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Iterable, Tuple
 
 from ..llm_adapters.llm_base import LLMBase
 
 from .models import ParameterRating
 from .parameter_assessor import ParameterAssessor
 
-from ..agent_prompts.prompts_ids import PromptId
 from ..agent_prompts.prompt_registry import PromptRegistry
+
+try:
+    from ..agent_prompts.prompt_template import PromptTemplate
+except Exception: 
+    PromptTemplate = Any  
 
 from .json_utils import (
     _safe_text,
@@ -25,6 +29,7 @@ class ConfidenceAssessor:
         self,
         llm: LLMBase,
         *,
+        prompts: Optional[PromptRegistry] = None,
         default_fallback: float = 0.5,
         max_decimals: int = 2,
         entity_mismatch_penalty: float = 0.98,
@@ -34,25 +39,93 @@ class ConfidenceAssessor:
         parameter_assessors: Optional[List[ParameterAssessor]] = None,
     ):
         self.llm = llm
+        self.prompts = prompts 
+
         self.default_fallback = _clamp01(default_fallback)
         self.max_decimals = max(0, int(max_decimals))
         self.entity_mismatch_penalty = _clamp01(entity_mismatch_penalty)
         self.include_tool_result_in_quality = bool(include_tool_result_in_quality)
         self.tool_result_max_chars = max(0, int(tool_result_max_chars))
-        self.log_parse_failures = bool(log_parse_failures)
+        self.log_parse_fail_failures = bool(log_parse_failures)
 
-        self.parameter_assessors: List[ParameterAssessor] = list(parameter_assessors or [])
+        self.parameter_assessors: List[ParameterAssessor] = []
+        for a in (parameter_assessors or []):
+            self.add_parameter_assessor(a)
 
         logger.info(
             "[ConfidenceAssessor.__init__] fallback=%.2f max_decimals=%d mismatch_penalty=%.2f "
-            "include_tool_result_in_quality=%s tool_result_max_chars=%d log_parse_failures=%s",
+            "include_tool_result_in_quality=%s tool_result_max_chars=%d log_parse_failures=%s assessors=%d",
             self.default_fallback,
             self.max_decimals,
             self.entity_mismatch_penalty,
             self.include_tool_result_in_quality,
             self.tool_result_max_chars,
-            self.log_parse_failures,
+            self.log_parse_fail_failures,
+            len(self.parameter_assessors),
         )
+
+    def add_parameter_assessor(self, assessor: ParameterAssessor) -> None:
+        """Register a new assessor at runtime (framework/plugin use-case)."""
+        if assessor is None:
+            return
+        self._bind_prompts_to_assessor(assessor)
+        self._register_assessor_prompt_defaults(assessor)
+        self.parameter_assessors.append(assessor)
+
+    def _bind_prompts_to_assessor(self, assessor: ParameterAssessor) -> None:
+        """Duck-typed binding so assessors can optionally use PromptRegistry."""
+        if self.prompts is None:
+            return
+
+        fn = getattr(assessor, "set_prompts", None)
+        if callable(fn):
+            try:
+                fn(self.prompts)
+                return
+            except Exception as e:
+                logger.warning("[ConfidenceAssessor] assessor.set_prompts failed assessor=%r err=%r", assessor, e)
+
+        if hasattr(assessor, "prompts"):
+            try:
+                current = getattr(assessor, "prompts", None)
+                if current is None:
+                    setattr(assessor, "prompts", self.prompts)
+            except Exception as e:
+                logger.warning("[ConfidenceAssessor] failed to set assessor.prompts assessor=%r err=%r", assessor, e)
+
+    def _register_assessor_prompt_defaults(self, assessor: ParameterAssessor) -> None:
+        """
+        If the assessor ships prompt templates, register them into PromptRegistry.
+        This allows plugins to bring their own prompts without editing core defaults.
+        """
+        if self.prompts is None:
+            return
+
+        reg_default = getattr(self.prompts, "register_default", None)
+        if not callable(reg_default):
+            return
+
+        get_many = getattr(assessor, "default_prompt_templates", None)
+        if callable(get_many):
+            try:
+                items = get_many()
+                if isinstance(items, dict):
+                    for pid, tpl in items.items():
+                        if pid and tpl is not None:
+                            reg_default(str(pid), tpl)
+                return
+            except Exception as e:
+                logger.warning("[ConfidenceAssessor] default_prompt_templates failed assessor=%r err=%r", assessor, e)
+
+        pid = getattr(assessor, "prompt_id", None)
+        get_one = getattr(assessor, "default_prompt_template", None)
+        if pid and callable(get_one):
+            try:
+                tpl = get_one()
+                if tpl is not None:
+                    reg_default(str(pid), tpl)
+            except Exception as e:
+                logger.warning("[ConfidenceAssessor] default_prompt_template failed assessor=%r err=%r", assessor, e)
 
     def assess_step_summary(
         self,
@@ -83,39 +156,12 @@ class ConfidenceAssessor:
 
         entity_same = bool((entity.meta or {}).get("same_entity", True))
         entity_conf = float(entity.score)
-        quality_score = float(quality.score)
-        realism_score = float(realism.score)
 
         if not entity_same:
             conf = entity_conf * (1.0 - self.entity_mismatch_penalty)
-            out = self._round_and_clamp(conf)
-            logger.info(
-                "[ConfidenceAssessor.assess_step_summary] entity_same=False entity_conf=%.3f quality=%.3f realism=%.3f "
-                "-> conf=%.3f (penalized) reason_entity=%s reason_quality=%s reason_realism=%s",
-                entity_conf,
-                quality_score,
-                realism_score,
-                out,
-                entity.reason,
-                quality.reason,
-                realism.reason,
-            )
-            return out
+            return self._round_and_clamp(conf)
 
-        conf = self._mean_score(ratings)
-        out = self._round_and_clamp(conf)
-        logger.info(
-            "[ConfidenceAssessor.assess_step_summary] entity_same=True entity_conf=%.3f quality=%.3f realism=%.3f "
-            "-> conf=%.3f reason_entity=%s reason_quality=%s reason_realism=%s",
-            entity_conf,
-            quality_score,
-            realism_score,
-            out,
-            entity.reason,
-            quality.reason,
-            realism.reason,
-        )
-        return out
+        return self._round_and_clamp(self._mean_score(ratings))
 
     def assess(
         self,
@@ -144,44 +190,14 @@ class ConfidenceAssessor:
         )
 
         entity = self._pick_entity_rating(ratings)
-        quality = self._pick_named_rating(ratings, {"answer_quality", "quality"}, fallback_name="answer_quality")
-        realism = self._pick_named_rating(ratings, {"answer_realism", "realism"}, fallback_name="answer_realism")
-
         entity_same = bool((entity.meta or {}).get("same_entity", True))
         entity_conf = float(entity.score)
-        quality_score = float(quality.score)
-        realism_score = float(realism.score)
 
         if not entity_same:
             conf = entity_conf * (1.0 - self.entity_mismatch_penalty)
-            out = self._round_and_clamp(conf)
-            logger.info(
-                "[ConfidenceAssessor.assess] entity_same=False entity_conf=%.3f quality=%.3f realism=%.3f "
-                "-> conf=%.3f (penalized) reason_entity=%s reason_quality=%s reason_realism=%s",
-                entity_conf,
-                quality_score,
-                realism_score,
-                out,
-                entity.reason,
-                quality.reason,
-                realism.reason,
-            )
-            return out
+            return self._round_and_clamp(conf)
 
-        conf = self._mean_score(ratings)
-        out = self._round_and_clamp(conf)
-        logger.info(
-            "[ConfidenceAssessor.assess] entity_same=True entity_conf=%.3f quality=%.3f realism=%.3f "
-            "-> conf=%.3f reason_entity=%s reason_quality=%s reason_realism=%s",
-            entity_conf,
-            quality_score,
-            realism_score,
-            out,
-            entity.reason,
-            quality.reason,
-            realism.reason,
-        )
-        return out
+        return self._round_and_clamp(self._mean_score(ratings))
 
     def _run_parameter_assessors(
         self,
@@ -277,8 +293,3 @@ class ConfidenceAssessor:
     def _round_and_clamp(self, v: float) -> float:
         v = _clamp01(v)
         return float(f"{v:.{self.max_decimals}f}")
-
-
-__all__ = [
-    "ConfidenceAssessor",
-]
