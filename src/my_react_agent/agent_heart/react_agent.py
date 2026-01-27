@@ -45,12 +45,14 @@ from .action_context import ActionHandlerContext
 from .mixins.formatting import FormattingMixin
 from .mixins.planning import PlanningMixin
 from .mixins.execution import ExecutionMixin
+from .mixins.prompting import PromptingMixin
 
 
 class ReActAgent(
     FormattingMixin,
     PlanningMixin,
     ExecutionMixin,
+    PromptingMixin,
 ):
     def __init__(
         self,
