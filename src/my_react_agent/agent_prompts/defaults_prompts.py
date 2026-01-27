@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from .core import PromptId, PromptTemplate
+from .prompts_ids import PromptId
+from .prompt_template import PromptTemplate
 
 DEFAULT_PROMPTS: dict[PromptId, PromptTemplate] = {
 
@@ -80,21 +81,21 @@ DEFAULT_PROMPTS: dict[PromptId, PromptTemplate] = {
             "A previously executed step produced a result that looks unreliable or not well-aligned "
             "with the current step task.\n\n"
             "You must now choose the BEST next action from this action catalogue:\n"
-            f"{actions_catalog}\n\n"
+            "{actions_catalog}\n\n"
             "Available tools:\n"
-            f"{tool_catalog}\n\n"
+            "{tool_catalog}\n\n"
             "General rules:\n"
             "1) Obey each tool's description and limits exactly. Do NOT imagine extra abilities.\n"
             "2) Avoid repeating the exact same (tool_name, tool_input) pair that already failed unless you adjust "
             "   tool_input to better match that tool's input format.\n"
-            f"Step task:\n{plan.instruction}\n\n"
+            "Step task:\n{step_task}\n\n"
             "Previously used tool:\n"
-            f"- name: {tool_name_for_prompt}\n"
-            f"- input: {refined_input}\n\n"
+            "- name: {prev_tool_name}\n"
+            "- input: {prev_tool_input}\n\n"
             "Step result (possibly unreliable):\n"
-            f"{raw_text}\n\n"
+            "{raw_text}\n\n"
             "Return STRICT JSON ONLY with this schema:\n"
-            f"{schema}\n"
+            "{schema}\n"
             "JSON:"
         ),
         required_vars={

@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import Any
 
-from ..agent_prompts.prompts_ids import PromptId
-from ..agent_prompts.prompt_registry import PromptRegistry
+from ...agent_prompts.prompts_ids import PromptId
+from ...agent_prompts.prompt_registry import PromptRegistry
 from ..logger import logger
 
 

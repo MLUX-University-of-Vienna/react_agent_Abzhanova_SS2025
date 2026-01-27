@@ -67,18 +67,4 @@ class Action(ABC):
             lines.append(f"  when_to_pick: {self.when_to_pick}")
         if self.instructions:
             lines.append(f"  instructions: {self.instructions}")
-        return "\n".join(lines)ead(self) -> Optional[List[str]]:
-        return None
-
-    @property
-    def examples(self) -> List[str]:
-        return []
-
-    def to_catalog_entry(self) -> str:
-        lines = [f"- {self.name}"]
-        if self.when_to_pick:
-            lines.append(f"  when_to_pick: {self.when_to_pick}")
-        if self.instructions:
-            lines.append(f"  instructions: {self.instructions}")
         return "\n".join(lines)
-

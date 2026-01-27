@@ -21,7 +21,7 @@ class ActionHandler(ABC):
     def run(self, ctx: "ActionHandlerContext") -> Tuple[StepToolCall, StepResult, Step]:
         ...
 
-     def should_assess_result(
+    def should_assess_result(
         self,
         ctx: "ActionHandlerContext",
         *,

@@ -12,6 +12,7 @@ from .entity_extractor import EntityExtractor
 
 from ..agent_prompts.prompts_ids import PromptId
 from ..agent_prompts.prompt_registry import PromptRegistry
+from ..agent_heart.prompted_component import PromptedComponent
 
 from .data_structures import (
     Entity,

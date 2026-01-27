@@ -26,7 +26,7 @@ from ...tool_management.tool_query_refiner import RefinerPolicy
 from ..logger import logger
 from .text_utils import TextUtilsMixin
 
-from ..agent_prompts.prompts_ids import PromptId
+from ...agent_prompts.prompts_ids import PromptId
 
 class ExecutionMixin(TextUtilsMixin):
     _NUM_RE = re.compile(r"(?<![A-Za-z0-9_])(\d{1,3}(?:[,\s]\d{3})+|\d+(?:\.\d+)?)")
@@ -250,6 +250,7 @@ class ExecutionMixin(TextUtilsMixin):
             f'"one of: {allowed_names_str}",'
             '"tool_name":"<tool name or empty>",'
             '"tool_input":"<tool input or empty>",'
+            '"step_task":"<optional revised step task or empty>",'
             '"message":"<short reason>"}'
         )
 
@@ -261,15 +262,17 @@ class ExecutionMixin(TextUtilsMixin):
         if not tool_name_for_prompt:
             tool_name_for_prompt = self._sanitise_to_text(action_name)
 
+        logger.info("[ReActAgent._handle_low_confidence_action_result] step_task=%r", plan.instruction)
+
         prompt = self._render_prompt(
             PromptId.LOW_CONF_TOOL_RESULT,
-            actions_catalog=actions_catalog,
-            tool_catalog=tool_catalog,
-            allowed_actions=allowed_names_str,
+            question=question,
             step_task=plan.instruction,
             prev_tool_name=tool_name_for_prompt,
             prev_tool_input=refined_input,
             raw_text=raw_text,
+            tool_catalog=tool_catalog,
+            actions_catalog=actions_catalog,
             schema=schema,
         )
 
@@ -284,7 +287,7 @@ class ExecutionMixin(TextUtilsMixin):
         action = self._sanitise_to_text(data.get("action", "")).upper()
         new_tool_name = self._sanitise_to_text(data.get("tool_name", ""))
 
-        step_task_raw = data.get("step's_task", "")
+        step_task_raw = data.get("step_task", "")
         step_task = self._sanitise_to_text(step_task_raw)
         new_tool_input = self._sanitise_to_text(data.get("tool_input", ""))
         if step_task:

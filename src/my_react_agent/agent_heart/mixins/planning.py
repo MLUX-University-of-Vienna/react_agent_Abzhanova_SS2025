@@ -9,7 +9,7 @@ from ..logger import logger
 from ..trace_models import ReActStep
 from .text_utils import TextUtilsMixin
 
-from ..agent_prompts.prompts_ids import PromptId
+from ...agent_prompts.prompts_ids import PromptId
 
 
 class PlanningMixin(TextUtilsMixin):
@@ -177,6 +177,7 @@ class PlanningMixin(TextUtilsMixin):
             '"think":"<short>",'
             f'"action":"one of: {allowed_names_str}",'
             '"tool_name":"<tool name or empty>",'
+            '"tool_input":"<tool input or empty>",'
             '"message":"<optional message>'
             "}"
         )
@@ -189,7 +190,7 @@ class PlanningMixin(TextUtilsMixin):
             allowed_actions=allowed_names_str,
             step_task=plan.instruction,
             needed_facts="\n".join(f"- {x}" for x in (plan.needed_facts or [])) or "(none)",
-            prev_block=prev_block,
+            prev_steps_block=prev_block,
             schema=schema,
         )
 

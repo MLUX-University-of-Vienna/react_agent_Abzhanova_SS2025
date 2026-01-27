@@ -11,7 +11,7 @@ from .tools.agent_tool import AgentTool
 
 from ..agent_prompts.prompts_ids import PromptId
 from ..agent_prompts.prompt_registry import PromptRegistry
-from ..agent_prompts.prompted_component import PromptedComponent
+from ..agent_heart.prompted_component import PromptedComponent
 
 logger = logging.getLogger(__name__)
 

@@ -8,15 +8,16 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
-from evaluation.llm_adapters.ollama_llama3_llm import OllamaLlama3LLM
+from .llm_adapters.ollama_llama3_llm import OllamaLlama3LLM
 
-from src.my_react_agent.agent_core.agent_actions import (
+from my_react_agent.agent_core.agent_actions import (
     AnswerByItselfAction,
     ClarifyAction,
     UseToolAction,
     StopAction,
-    NeedContextAction,
 )
+
+from my_react_agent.agent_core.agent_actions.need_context_action import NeedContextAction
 from my_react_agent.agent_heart.react_agent import ReActAgent, ParameterAssessorFactory
 
 from my_react_agent.agent_memory.llm_entity_extractor import LLMEntityExtractor
@@ -24,7 +25,7 @@ from my_react_agent.agent_memory.entity_extractor import EntityExtractor
 from my_react_agent.agent_memory.data_structures import Mention, GenderEnum
 
 from my_react_agent.agent_prompts.prompt_registry import PromptRegistry
-from my_react_agent.agent_prompts.defaults_prompts import DEFAULT_PROMPTS 
+from my_react_agent.agent_prompts.defaults_prompts import DEFAULT_PROMPTS
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -86,7 +87,7 @@ def _parse_vector_search_files_from_env() -> List[Path]:
 
 def _init_wikipedia_tool() -> Optional[object]:
     try:
-        from tools.wikipedia_tool import WikipediaTool
+        from .tools.wikipedia_tool import WikipediaTool
         tool = WikipediaTool()
         return tool
     except Exception as e:
@@ -96,7 +97,7 @@ def _init_wikipedia_tool() -> Optional[object]:
 
 def _init_calculator_tool() -> Optional[object]:
     try:
-        from tools.calculator_tool import CalculatorTool
+        from .tools.calculator_tool import CalculatorTool
         tool = CalculatorTool()
         return tool
     except Exception as e:
@@ -106,7 +107,7 @@ def _init_calculator_tool() -> Optional[object]:
 
 def _init_serpapi_tool() -> Optional[object]:
     try:
-        from tools.serpapi_tool import SerpAPITool
+        from .tools.serpapi_tool import SerpAPITool
     except Exception as e:
         logger.exception("[tools] web_search import failed (SerpAPITool): %r", e)
         return None
@@ -126,7 +127,7 @@ def _init_serpapi_tool() -> Optional[object]:
 
 def _init_vector_search_tool() -> Optional[object]:
     try:
-        from tools.vector_search_tool import VectorSearchTool
+        from .tools.vector_search_tool import VectorSearchTool
     except Exception as e:
         logger.exception("[tools] vector_search import failed (VectorSearchTool): %r", e)
         return None
@@ -241,10 +242,16 @@ def create_parameter_assessor_factories() -> List[ParameterAssessorFactory]:
             factories.append(lambda llm, prompts, _cls=cls: _cls(llm, prompts=prompts))
             logger.info("[create_parameter_assessor_factories] enabled %s.%s", mod_path, cls_name)
         except Exception as e:
-            logger.warning("[create_parameter_assessor_factories] missing %s.%s (skipping) err=%r", mod_path, cls_name, e)
+            logger.warning(
+                "[create_parameter_assessor_factories] missing %s.%s (skipping) err=%r",
+                mod_path,
+                cls_name,
+                e,
+            )
 
     logger.info("[create_parameter_assessor_factories] total=%d", len(factories))
     return factories
+
 
 @dataclass
 class PluginContext:
@@ -289,7 +296,7 @@ def main() -> None:
     llms = create_llms()
 
     try:
-        entity_extractor = LLMEntityExtractor(llms["summariser_llm"])
+        entity_extractor = LLMEntityExtractor(llms["summariser_llm"], prompts=prompts)
         logger.info("[main] LLMEntityExtractor initialised")
     except Exception as e:
         logger.exception("[main] Failed to init LLMEntityExtractor; using RegexEntityExtractor err=%r", e)

@@ -400,8 +400,8 @@ class ReActAgent(
         prompt = self._render_prompt(
             PromptId.SYNTHESISE_FINAL_ANSWER,
             question=question,
-            steps_block=steps_block,
-            ctx_block=ctx_block,
+            executed_steps_block=executed_steps_block, 
+            context_block=context_block,
         )
         logger.debug(
             "[ReActAgent._synthesise_final_answer] prompt_len=%d steps=%d ctx_snips=%d",
@@ -441,7 +441,6 @@ class ReActAgent(
 
     def _build_action_services(self) -> ActionServices:
         return ActionServices(
-            answer_generator=self.answer_generator,
             tool_executor=self.tool_executor,
             tool_query_refiner=self.tool_query_refiner,
             confidence_assessor=self.confidence_assessor,
