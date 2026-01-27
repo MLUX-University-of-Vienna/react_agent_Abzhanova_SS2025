@@ -8,15 +8,15 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
-from my_react_agent.llm_adapters.ollama_llama3_llm import OllamaLlama3LLM
+from evaluation.llm_adapters.ollama_llama3_llm import OllamaLlama3LLM
 
-from my_react_agent.agent_core.agent_actions import (
+from src.my_react_agent.agent_core.agent_actions import (
     AnswerByItselfAction,
     ClarifyAction,
     UseToolAction,
     StopAction,
+    NeedContextAction,
 )
-from my_react_agent.agent_core.agent_actions.need_context_action import NeedContextAction
 from my_react_agent.agent_heart.react_agent import ReActAgent, ParameterAssessorFactory
 
 from my_react_agent.agent_memory.llm_entity_extractor import LLMEntityExtractor
@@ -226,10 +226,6 @@ def create_prompt_registry() -> PromptRegistry:
 
 
 def create_parameter_assessor_factories() -> List[ParameterAssessorFactory]:
-    """
-    Framework-safe: optional imports.
-    If a given assessor module/class is missing, we skip it and keep the agent running.
-    """
     factories: List[ParameterAssessorFactory] = []
 
     candidates = [

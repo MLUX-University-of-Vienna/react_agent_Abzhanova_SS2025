@@ -1,5 +1,5 @@
 import ollama
-from .llm_base import LLMBase
+from src.my_react_agent.llm_adapters.llm_base import LLMBase
 
 class OllamaLlama3LLM(LLMBase):
     def __init__(

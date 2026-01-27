@@ -1,0 +1,2 @@
+[console_scripts]
+my-react-agent = my_react_agent.main:main
