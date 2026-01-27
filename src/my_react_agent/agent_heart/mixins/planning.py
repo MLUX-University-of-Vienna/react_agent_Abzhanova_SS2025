@@ -9,6 +9,8 @@ from ..logger import logger
 from ..trace_models import ReActStep
 from .text_utils import TextUtilsMixin
 
+from ..agent_prompts.prompts_ids import PromptId
+
 
 class PlanningMixin(TextUtilsMixin):
     def _tool_catalog_text(self) -> str:
@@ -35,21 +37,10 @@ class PlanningMixin(TextUtilsMixin):
     def _should_separate_question(self, question: str) -> bool:
         schema = '{"separate": true or false, "reason": "<short>"}'
 
-        prompt = (
-            "You are deciding whether a user question should be decomposed "
-            "into multiple sequential steps, or handled as a single step. \n\n"
-            "Guidelines: \n"
-            "- Answer true in 'separate' if the question clearly involves: \n"
-            "  - multiple entities to compare \n"
-            "  - multiple calculations or time periods \n"
-            "  dependent sub-questions (where one answer is needed for another) \n"
-            "  complex reasoning that benefits from ordered steps \n"
-            "- Answer false in 'separate' if the question is a single, direct lookup, "
-            "  a simple factual question, or a brief conceptual explanation. \n"
-            "- Be conservative: prefer false if you are unsure. \n\n"
-            f"User question:\n{question} \n\n"
-            f"Return STRICT JSON with this shape:\n{schema} \n\n"
-            "JSON only, no explanation:"
+        prompt = self._render_prompt(
+            PromptId.SHOULD_SEPARATE_QUESTION,
+            question=question,
+            schema=schema,
         )
 
         logger.info("[ReActAgent._should_separate_question] Prompt length=%d", len(prompt))
@@ -86,25 +77,11 @@ class PlanningMixin(TextUtilsMixin):
             '...]}'
         )
 
-        prompt = (
-            "Your task is to break these question into a small, ordered list "
-            "of concrete steps that, if executed in sequence, will provide all "
-            "facts or/and actions needed to answer the question.\n"
-            "Think of these like you're solving a math problem in a minimal numbers of steps. \n\n"
-            "Rules:\n"
-            "- Steps must be in executable order (1,2,3,...).\n"
-            "- Each step must be small, focused on one micro-task. \n"
-            "- All steps must use same words from question, no synonyms, no similar words, no resolving of definitions. \n"
-            "- If a step answering needs results of previous steps and they contain the same entity, list their indices "
-            "  in 'depends_on'. Otherwise, use an empty list.\n"
-            "- Do not write step if it will resolve the same fact as step before. \n"
-            "- Only describe *what* to do, not *how*, not with which *tool*. \n"
-            "- Do not add steps to find information that is already given. \n"
-            "- Use at most 6 steps unless the question clearly needs more.\n\n"
-            f"User question:\n{question}\n\n"
-            f"Available tools (for later execution):\n{tool_catalog}\n\n"
-            f"Return STRICT JSON with the following shape:\n{schema}\n\n"
-            "JSON only, no explanation:"
+        prompt = self._render_prompt(
+            PromptId.PLAN_QUESTION_STEPS,
+            question=question,
+            tool_catalog=tool_catalog,
+            schema=schema,
         )
 
         logger.info("[ReActAgent._plan_question_steps] Prompt length=%d", len(prompt))
@@ -204,19 +181,16 @@ class PlanningMixin(TextUtilsMixin):
             "}"
         )
 
-        prompt = (
-            "You are deciding how to execute task of the ONE planned step inside a larger plan. \n\n"
-            "Available actions (choose exactly ONE), read precisely:\n"
-            f"{actions_catalog}\n\n"
-            "Tools you can call, precisely read tool descriptions, tool choice is very important:\n"
-            f"{tool_catalog}\n\n"
-            f"User question:\n{question}\n\n"
-            f"Current step:\n"
-            f"- task to execute: {plan.instruction}\n"
-            f"- needed_facts: {plan.needed_facts}\n\n"
-            f"Previously executed steps:\n{prev_block}\n\n"
-            f"Return STRICT JSON matching this shape:\n{schema}\n"
-            "JSON:"
+        prompt = self._render_prompt(
+            PromptId.DECIDE_ACTION_FOR_STEP,
+            question=question,
+            actions_catalog=actions_catalog,
+            tool_catalog=tool_catalog,
+            allowed_actions=allowed_names_str,
+            step_task=plan.instruction,
+            needed_facts="\n".join(f"- {x}" for x in (plan.needed_facts or [])) or "(none)",
+            prev_block=prev_block,
+            schema=schema,
         )
 
         raw = (self.planner_llm.generate(prompt) or "").strip()
