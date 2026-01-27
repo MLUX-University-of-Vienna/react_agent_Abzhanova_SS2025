@@ -15,8 +15,26 @@ class ParameterAssessor(ABC):
         self.default_fallback = default_fallback
         self.log_parse_failures = log_parse_failures
 
-    def _render_prompt(self, pid: PromptId, **vars: Any) -> str:
-        return self.prompts.render(pid.value, **vars)
+        pid = self.prompt_id
+        if pid not in self.prompts._defaults:
+            self.prompts.register_default(pid, self.default_prompt_template())
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        ...
+
+    @property
+    @abstractmethod
+    def prompt_id(self) -> str:
+        ...
+
+    @abstractmethod
+    def default_prompt_template(self) -> "PromptTemplate":
+        ...
+
+    def _render_prompt(self, **vars: Any) -> str:
+        return self.prompts.render(self.prompt_id, **vars)
 
     @abstractmethod
     def assess(
