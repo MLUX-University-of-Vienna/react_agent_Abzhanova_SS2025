@@ -26,6 +26,7 @@ from ...tool_management.tool_query_refiner import RefinerPolicy
 from ..logger import logger
 from .text_utils import TextUtilsMixin
 
+from ..agent_prompts.prompts_ids import PromptId
 
 class ExecutionMixin(TextUtilsMixin):
     _NUM_RE = re.compile(r"(?<![A-Za-z0-9_])(\d{1,3}(?:[,\s]\d{3})+|\d+(?:\.\d+)?)")
@@ -260,34 +261,16 @@ class ExecutionMixin(TextUtilsMixin):
         if not tool_name_for_prompt:
             tool_name_for_prompt = self._sanitise_to_text(action_name)
 
-        prompt = (
-            "A previously executed step produced a result that looks unreliable or not well-aligned "
-            "with the current step task.\n\n"
-            "You must now choose the BEST next action from this action catalogue:\n"
-            f"{actions_catalog}\n\n"
-            "Available tools:\n"
-            f"{tool_catalog}\n\n"
-            "General rules:\n"
-            "1) Obey each tool's description and limits exactly. Do NOT imagine extra abilities.\n"
-            "2) If the question needs real-world facts or statistics (e.g. populations, prices, dates, GDP, etc.), "
-            "   choose only tools whose description says they can look up external facts. Do NOT use tools that "
-            "   explicitly say they cannot look up real-world data.\n"
-            "3) Calculator-type tools may ONLY evaluate explicit numeric expressions (numbers and math operators) "
-            "   using values already known. They must NOT be used to fetch facts like \"population of X\" or called "
-            "   with natural-language queries.\n"
-            "4) Avoid repeating the exact same (tool_name, tool_input) pair that already failed unless you adjust "
-            "   tool_input to better match that tool's input format.\n"
-            "5) Choose USE_TOOL only if at least one tool clearly fits the question. Otherwise pick ANSWER_BY_ITSELF "
-            "   or STOP.\n\n"
-            f"Step task:\n{plan.instruction}\n\n"
-            "Previously used tool:\n"
-            f"- name: {tool_name_for_prompt}\n"
-            f"- input: {refined_input}\n\n"
-            "Step result (possibly unreliable):\n"
-            f"{raw_text}\n\n"
-            "Return STRICT JSON ONLY with this schema:\n"
-            f"{schema}\n"
-            "JSON:"
+        prompt = self._render_prompt(
+            PromptId.LOW_CONF_TOOL_RESULT,
+            actions_catalog=actions_catalog,
+            tool_catalog=tool_catalog,
+            allowed_actions=allowed_names_str,
+            step_task=plan.instruction,
+            prev_tool_name=tool_name_for_prompt,
+            prev_tool_input=refined_input,
+            raw_text=raw_text,
+            schema=schema,
         )
 
         logger.info("[ReActAgent._handle_low_confidence_action_result] Prompt length=%d", len(prompt))
@@ -537,17 +520,10 @@ class ExecutionMixin(TextUtilsMixin):
 
     def _summarise_observation(self, user_question: str, result: Evidence) -> str:
         raw_text = self._sanitise_to_text(result.content or "")
-        prompt = (
-            "You are summarising a tool result for an internal execution trace.\n"
-            "Write 1-5 concise facts that will help answer the question.\n"
-            "CRITICALLY IMPORTANT:\n"
-            "- If the user question involves any quantities you MUST explicitly include\n"
-            "  the exact numeric values and units from the tool result that help answer the question.\n"
-            "- Do NOT omit such numbers when they are present.\n"
-            "- If no relevant numbers are present, say so explicitly.\n"
-            f"Question:\n{user_question}\n\n"
-            f"Tool result:\n{raw_text}\n\n"
-            "Summary:"
+        prompt = self._render_prompt(
+            PromptId.SUMMARISE_OBSERVATION,
+            question=user_question,
+            tool_result=raw_text,
         )
         out = (self.summariser_llm.generate(prompt) or "").strip()
         return self._sanitise_to_text(out) or "No immediately relevant information found."
@@ -578,15 +554,13 @@ class ExecutionMixin(TextUtilsMixin):
             '"number":"<optional number or null>",'
             '"unit":"<optional>"}]}'
         )
-        prompt = (
-            "Extract up to N compact facts from the text that help resolve the FOCUS. "
-            "Return JSON only.\n\n"
-            f"N={self.config.fact_schema_max_items}\n"
-            f"FOCUS: {focus_or_question}\n"
-            f"Original question: {question}\n\n"
-            f"Text:\n{text}\n\n"
-            f"Schema: {schema}\n"
-            "JSON:"
+        prompt = self._render_prompt(
+            PromptId.UPDATE_FACT_STORE,
+            N=self.config.fact_schema_max_items,
+            focus=focus_or_question,
+            question=question,
+            text=text,
+            schema=schema,
         )
         raw = (self.summariser_llm.generate(prompt) or "").strip()
         data = self._safe_parse_json_object(raw)
