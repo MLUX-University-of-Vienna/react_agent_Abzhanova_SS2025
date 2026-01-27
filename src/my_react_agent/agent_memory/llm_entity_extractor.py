@@ -10,6 +10,9 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from ..llm_adapters.llm_base import LLMBase
 from .entity_extractor import EntityExtractor
 
+from ..agent_prompts.prompts_ids import PromptId
+from ..agent_prompts.prompt_registry import PromptRegistry
+
 from .data_structures import (
     Entity,
     Evidence,
@@ -36,7 +39,8 @@ class LLMEntityExtractor(EntityExtractor):
         "I", "We", "You", "He", "She", "They", "It",
     }
 
-    def __init__(self, llm: LLMBase, *, max_chars: int = 2500, max_entities: int = 5):
+    def __init__(self, llm: LLMBase, *, prompts: PromptRegistry, max_chars: int = 2500, max_entities: int = 5):
+        PromptedComponent.__init__(self, prompts=prompts)
         self.llm = llm
         self.max_chars = int(max_chars)
         self.max_entities = int(max_entities)
@@ -95,19 +99,11 @@ class LLMEntityExtractor(EntityExtractor):
             "]}"
         )
 
-        prompt = (
-            "You are a deterministic entity extraction function.\n"
-            "Extract the MOST IMPORTANT named entities from INPUT.\n\n"
-            "RULES (CRITICAL):\n"
-            "1) Return STRICT JSON only. No markdown, no commentary.\n"
-            "2) Each entity 'name' MUST be an EXACT substring of INPUT.\n"
-            "3) Prefer the MOST SPECIFIC mention (e.g. 'Burgau in Styria, Austria' over 'Burgau').\n"
-            "4) Only include entities that help answer the question.\n"
-            "5) Return at most 5 entities.\n"
-            "6) Do not return generic nouns like 'population' unless it is a proper name.\n\n"
-            f"JSON SHAPE:\n{schema}\n\n"
-            f"INPUT:\n{src}\n"
-            "JSON:"
+        prompt = self._render_prompt(
+            PromptId.LLM_EXTRACT_NAMES,
+            schema=schema,
+            src=src,
+            max_entities=self.max_entities,
         )
 
         raw = (self.llm.generate(prompt) or "").strip()

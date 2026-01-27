@@ -212,16 +212,16 @@ DEFAULT_PROMPTS: dict[PromptId, PromptTemplate] = {
             "RULES (CRITICAL):\n"
             "1) Return STRICT JSON only. No markdown, no commentary.\n"
             "2) Each entity 'name' MUST be an EXACT substring of INPUT.\n"
-            "3) Prefer the MOST SPECIFIC mention (e.g. 'Burgau in Styria, Austria' over 'Burgau').\n"
+            "3) Prefer the MOST SPECIFIC mention.\n"
             "4) Only include entities that help answer the question.\n"
-            "5) Return at most 5 entities.\n"
-            "6) Do not return generic nouns like 'population' unless it is a proper name.\n\n"
+            "5) Return at most {max_entities} entities.\n"
+            "6) Do not return generic nouns unless it is a proper name.\n\n"
             "JSON SHAPE:\n{schema}\n\n"
-            "INPUT:\n{input_text}\n"
+            "INPUT:\n{src}\n"
             "JSON:"
         ),
-        required_vars={"schema", "input_text"},
-        description="Extract up to 5 named entities as exact substrings with basic typing",
+        required_vars={"schema", "src", "max_entities"},
+        description="LLM entity extraction",
         version="1",
     ),
     PromptId.TOOL_QUERY_REFINER_MAIN: PromptTemplate(
