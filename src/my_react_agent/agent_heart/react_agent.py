@@ -69,6 +69,7 @@ class ReActAgent(
         step_actions: Optional[List[Action]] = None,
         low_conf_actions: Optional[List[Action]] = None,
         parameter_assessors: Optional[List[ParameterAssessor]] = None,
+        prompts: PromptRegistry,
     ):
         if not tools:
             raise ValueError("ReActAgent requires at least one tool")
@@ -116,6 +117,8 @@ class ReActAgent(
 
         self._current_question: str = ""
         self._context_snippets: List[str] = []
+
+        self.prompts = prompts
 
         logger.info(
             "[ReActAgent.__init__] Initialised with tools=%s max_steps=%d step_actions=%s low_conf_actions=%s",
