@@ -59,7 +59,7 @@ def configure_logging(level: int = logging.DEBUG) -> None:
         "urllib3",
         "wikipedia",
         "wikipediaapi",
-        "serpapi",
+        "duckduckgo",
         "httpx",
         "httpcore",
         "pdfminer",
@@ -105,23 +105,13 @@ def _init_calculator_tool() -> Optional[object]:
         return None
 
 
-def _init_serpapi_tool() -> Optional[object]:
+def _init_duckduckgo_tool() -> Optional[object]:
     try:
-        from .tools.serpapi_tool import SerpAPITool
-    except Exception as e:
-        logger.exception("[tools] web_search import failed (SerpAPITool): %r", e)
-        return None
-
-    serp_api_key = os.getenv("SERPAPI_API_KEY", "").strip()
-    if not serp_api_key:
-        logger.warning("[tools] SERPAPI_API_KEY missing; web_search disabled")
-        return None
-
-    try:
-        tool = SerpAPITool(api_key=serp_api_key)
+        from .tools.web_search_tool import DuckDuckGoTool
+        tool = DuckDuckGoTool()
         return tool
     except Exception as e:
-        logger.exception("[tools] web_search failed to init: %r", e)
+        logger.exception("[tools] duckduckgo failed to init: %s", e)
         return None
 
 
@@ -161,9 +151,9 @@ def create_tools() -> Dict[str, object]:
     if w is not None:
         tools["wikipedia"] = w
 
-    ws = _init_serpapi_tool()
-    if ws is not None:
-        tools["web_search"] = ws
+    ddg = _init_duckduckgo_tool()
+    if ddg is not None:
+        tools["web_search"] = ddg
 
     c = _init_calculator_tool()
     if c is not None:
