@@ -85,9 +85,8 @@ DEFAULT_PROMPTS: dict[PromptId, PromptTemplate] = {
             "Available tools:\n"
             "{tool_catalog}\n\n"
             "General rules:\n"
-            "1) Obey each tool's description and limits exactly. Do NOT imagine extra abilities.\n"
-            "2) Avoid repeating the exact same (tool_name, tool_input) pair that already failed unless you adjust "
-            "   tool_input to better match that tool's input format.\n"
+            "1) Obey each tool's description and limits exactly. Do NOT imagine extra abilities. \n"
+            "2) Avoid repeating the exact same (tool_name, tool_input) pair that already failed. \n"
             "Step task:\n{step_task}\n\n"
             "Previously used tool:\n"
             "- name: {prev_tool_name}\n"
@@ -223,7 +222,7 @@ DEFAULT_PROMPTS: dict[PromptId, PromptTemplate] = {
     ),
     PromptId.TOOL_QUERY_REFINER_MAIN: PromptTemplate(
         text=(
-            "You convert (USER QUESTION + CURRENT STEP TASK) into the exact INPUT STRING required by one TOOL.\n"
+            "You convert CURRENT STEP TASK into the exact INPUT STRING required by one TOOL.\n"
             'Return STRICT JSON only: {{ "tool_input": "<string, <={hard_cap} chars>", "reason": "<short>" }}\n\n'
             "Global rules:\n"
             "1) Use USER QUESTION as the source of truth for facts and numbers.\n"
