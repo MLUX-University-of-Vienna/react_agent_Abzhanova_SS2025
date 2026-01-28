@@ -640,7 +640,220 @@ def create_tools() -> Dict[str, object]:
 2. description
 - When it chooses USE_TOOL, it outputs a tool_name and the refiner produces tool_input.
 
--To make your tool easier to select:
+- To make your tool easier to select:
 1. Use a very specific description
 2. Provide strict refiner_instructions and refiner_input_regex
 3. Keep the input format simple (path:... question:...)
+
+
+## Adding a Custom ParameterAssessor (Example: `RelevanceAssessor`)
+
+This section shows how to add a new **ParameterAssessor** to the confidence-gating system.
+
+> **Goal:** add a `RelevanceAssessor` that scores whether a step’s answer/tool-result is **relevant to the step task** (not just plausible).
+
+In `my-react-agent`, confidence gating works like this:
+
+1. After a step runs, the agent creates **step summary evidence** (a short factual summary).
+2. `ConfidenceAssessor.assess_step_summary(...)` runs **all registered ParameterAssessors** on:
+   - `query_text` = step task
+   - `answer_text` = step summary content
+3. It aggregates the per-assessor `ParameterRating.score` values into one confidence score.
+4. If confidence is below threshold, the agent triggers a recovery loop (tries different actions/tools).
+
+So, to add an assessor you must:
+
+- Create a new class that extends `ParameterAssessor`
+- Provide a `PromptId` + default `PromptTemplate` (so users don’t need to edit the framework)
+- Return a `ParameterRating(name, score, reason, meta)`
+- Register it (either directly, via factory list, or via plugin)
+
+---
+
+#### Step 1 — Add a new PromptId
+
+Add a new ID to `my_react_agent/agent_prompts/prompts_ids.py`:
+
+```python
+class PromptId(str, Enum):
+
+    # Confidence assessor (existing)
+    CONF_ENTITY_ALIGNMENT = "confidence_entity_alignment"
+    CONF_ANSWER_QUALITY = "confidence_answer_quality"
+    CONF_ANSWER_REALISM = "confidence_answer_realism"
+
+    # Add this:
+    CONF_RELEVANCE = "confidence_relevance"
+```
+
+#### Step 2 - Add the default prompt template
+- Add a default prompt template to my_react_agent/agent_prompts/defaults_prompts.py under DEFAULT_PROMPTS.
+- IMPORTANT: your PromptTemplate.required_vars must match what your assessor passes to _render_prompt().
+
+```python
+from .prompts_ids import PromptId
+from .prompt_template import PromptTemplate
+
+DEFAULT_PROMPTS: dict[PromptId, PromptTemplate] = {
+    # ... existing ...
+
+    PromptId.CONF_RELEVANCE: PromptTemplate(
+        text=(
+            "You are an evaluator for a QA system.\n\n"
+            "Task: Score how RELEVANT the ANSWER is to the QUESTION.\n"
+            "Relevance means: it directly addresses the asked topic and does not drift to another entity or subject.\n\n"
+            "Scoring:\n"
+            "- 1.0 = clearly relevant and directly addresses the question.\n"
+            "- 0.5 = partially relevant; some content matches but key parts drift or are generic.\n"
+            "- 0.0 = irrelevant / wrong subject / does not address the question.\n\n"
+            "Output rules (CRITICAL):\n"
+            "- Output MUST be a SINGLE JSON object and NOTHING else.\n"
+            "- Keys MUST be exactly: score, reason.\n"
+            "- score MUST be one of: 0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0\n"
+            "- reason MUST be <= 20 words.\n"
+            "- Do NOT include any extra keys.\n\n"
+            "Schema example: {schema_example}\n\n"
+            "{knowledge_cutoff_block}{result_timestamp_block}"
+            "QUESTION:\n{question}\n\n"
+            "ANSWER:\n{answer}\n\n"
+            "JSON:"
+        ),
+        required_vars={
+            "schema_example",
+            "knowledge_cutoff_block",
+            "result_timestamp_block",
+            "question",
+            "answer",
+        },
+        description="Assess relevance of an answer to the question",
+        version="1",
+    ),
+}
+```
+
+#### Step 3 — Implement RelevanceAssessor
+-Create: my_react_agent/confidence_assessment/relevance_assessor.py
+
+```python
+from __future__ import annotations
+
+import json
+import logging
+from typing import Optional
+
+from ..llm_adapters.llm_base import LLMBase
+from ..agent_prompts.defaults_prompts import DEFAULT_PROMPTS
+from ..agent_prompts.prompt_template import PromptTemplate
+from ..agent_prompts.prompts_ids import PromptId
+from ..agent_prompts.prompt_registry import PromptRegistry
+
+from .json_utils import _coerce_score_0_1, _extract_json_object, _pick_reason, _round2
+from .models import ParameterRating
+from .parameter_assessor import ParameterAssessor
+
+logger = logging.getLogger(__name__)
+
+
+class RelevanceAssessor(ParameterAssessor):
+    def __init__(
+        self,
+        llm: LLMBase,
+        *,
+        prompts: PromptRegistry,
+        default_fallback: float = 0.5,
+        log_parse_failures: bool = True,
+    ):
+        super().__init__(llm, prompts=prompts, default_fallback=default_fallback, log_parse_failures=log_parse_failures)
+        logger.info(
+            "[RelevanceAssessor.__init__] ready prompt_id=%s fallback=%.2f",
+            self.prompt_id,
+            self.default_fallback,
+        )
+
+    @property
+    def name(self) -> str:
+        # This key becomes part of the ratings dict in ConfidenceAssessor
+        return "relevance"
+
+    @property
+    def prompt_id(self) -> str:
+        return PromptId.CONF_RELEVANCE.value
+
+    def default_prompt_template(self) -> PromptTemplate:
+        tpl = DEFAULT_PROMPTS.get(PromptId.CONF_RELEVANCE) or DEFAULT_PROMPTS.get(self.prompt_id)
+        if tpl is None:
+            raise KeyError(f"DEFAULT_PROMPTS missing template for {PromptId.CONF_RELEVANCE!r} / {self.prompt_id!r}")
+        return tpl
+
+    def assess(
+        self,
+        *,
+        query_text: str,
+        answer_text: str,
+        tool_result_text: str = "",
+        knowledge_cutoff: Optional[str] = None,
+        result_timestamp: Optional[str] = None,
+    ) -> ParameterRating:
+        schema = {"score": 0.0, "reason": "short"}
+
+        prompt = self._render_prompt(
+            schema_example=json.dumps(schema),
+            knowledge_cutoff_block=knowledge_cutoff or "",
+            result_timestamp_block=result_timestamp or "",
+            question=query_text,
+            answer=answer_text,
+        )
+
+        score = self.default_fallback
+        reason = "fallback"
+        raw = ""
+
+        try:
+            raw = (self.llm.generate(prompt) or "").strip()
+            obj = _extract_json_object(raw) or {}
+
+            if not obj and self.log_parse_failures:
+                logger.warning("[RelevanceAssessor] JSON parse failed raw=%r", raw[:600])
+
+            score = _coerce_score_0_1(obj.get("score", score), score)
+            reason = _pick_reason(obj, reason)
+
+        except Exception as e:
+            logger.warning("[RelevanceAssessor] LLM failed error=%r raw=%r", e, raw[:500])
+
+        return ParameterRating(
+            name=self.name,
+            score=_round2(score),
+            reason=reason,
+            meta={
+                # Optional: if you want to exclude from mean when irrelevant:
+                # "exclude_from_mean": False,
+            },
+        )
+```
+
+-What this returns:
+1. ParameterRating.name: "relevance" (unique key)
+2. ParameterRating.score: float 0–1 (rounded)
+3. ParameterRating.reason: short explanation
+
+#### Step 4 — Register it (Factory method)
+Add these in evaluation/main_to_run_agent.py:
+
+```python
+candidates = [
+    ("my_react_agent.confidence_assessment.entity_alignment_assessor", "EntityAlignmentAssessor"),
+    ("my_react_agent.confidence_assessment.answer_quality_assessor", "AnswerQualityAssessor"),
+    ("my_react_agent.confidence_assessment.answer_realism_assessor", "AnswerRealismAssessor"),
+    # Add this:
+    ("my_react_agent.confidence_assessment.relevance_assessor", "RelevanceAssessor"),
+]
+```
+
+- Because factory pattern already does:
+```python
+factories.append(lambda llm, prompts, _cls=cls: _cls(llm, prompts=prompts))
+```
+that is all what we need.
+
+#### Step 3 — Implement RelevanceAssessor
