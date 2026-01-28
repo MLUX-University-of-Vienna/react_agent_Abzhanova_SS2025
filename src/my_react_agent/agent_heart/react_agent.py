@@ -331,7 +331,7 @@ class ReActAgent(
 
         prompt = self._render_prompt(
             PromptId.REWRITE_STEP_TASK_WITH_CONTEXT,
-            task=task,
+            step_task=task,
             facts_block=facts_block,
             queries_block=queries_block,
             schema=schema,
@@ -400,8 +400,8 @@ class ReActAgent(
         prompt = self._render_prompt(
             PromptId.SYNTHESISE_FINAL_ANSWER,
             question=question,
-            executed_steps_block=executed_steps_block, 
-            context_block=context_block,
+            executed_steps_block=steps_block,
+            context_block=ctx_block,
         )
         logger.debug(
             "[ReActAgent._synthesise_final_answer] prompt_len=%d steps=%d ctx_snips=%d",

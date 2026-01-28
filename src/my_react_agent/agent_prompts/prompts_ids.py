@@ -6,6 +6,7 @@ class PromptId(str, Enum):
     PLAN_QUESTION_STEPS = "plan_question_steps"
     DECIDE_ACTION_FOR_STEP = "decide_action_for_step"
     LOW_CONF_TOOL_RESULT = "low_conf_tool_result"
+    ANSWER_BY_ITSELF = "answer_by_itself"
 
     # Execution / summarisation / memory
     SUMMARISE_OBSERVATION = "summarise_observation"

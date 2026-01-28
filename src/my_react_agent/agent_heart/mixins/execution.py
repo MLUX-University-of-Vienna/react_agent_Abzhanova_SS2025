@@ -226,6 +226,97 @@ class ExecutionMixin(TextUtilsMixin):
         except Exception:
             return step, []
 
+    def _build_deps_block(
+        self,
+        *,
+        deps: Iterable[int],
+        previous_step_results: List[Dict[str, Any]],
+        max_chars: int = 1500,
+    ) -> str:
+        deps_list = [int(x) for x in (deps or [])]
+        if not deps_list:
+            return "(none)"
+
+        by_idx: Dict[int, Dict[str, Any]] = {}
+        for r in previous_step_results or []:
+            if not isinstance(r, dict):
+                continue
+            try:
+                idx = int(r.get("index"))
+            except Exception:
+                continue
+            by_idx[idx] = r
+
+        lines: List[str] = []
+        for dep_idx in deps_list:
+            r = by_idx.get(dep_idx)
+            if not r:
+                lines.append(f"- Step {dep_idx}: (missing)")
+                continue
+
+            instr = self._sanitise_to_text(r.get("instruction", "")).strip()
+            obs = self._sanitise_to_text(r.get("observation", "")).strip()
+            ev = self._sanitise_to_text(r.get("evidence", "")).strip()
+
+            payload = obs or ev
+            if instr and payload:
+                lines.append(f"- Step {dep_idx} task: {instr}\n  answer: {payload}")
+            elif payload:
+                lines.append(f"- Step {dep_idx} answer: {payload}")
+            else:
+                lines.append(f"- Step {dep_idx}: (no recorded answer)")
+
+        out = "\n".join(lines).strip() or "(none)"
+        if len(out) > max_chars:
+            out = out[:max_chars].rstrip() + "…"
+        return out
+
+    def _answer_by_itself_for_step_task(self, *, step_task: str, deps_block: str) -> str:
+        step_task = (step_task or "").strip()
+        deps_block = (deps_block or "").strip() or "(none)"
+
+        prompt = self._render_prompt(
+            PromptId.ANSWER_BY_ITSELF,
+            step_task=step_task,
+            deps_block=deps_block,
+        )
+
+        logger.info(
+            "[ExecutionMixin._answer_by_itself_for_step_task] step_task_len=%d deps_len=%d prompt_len=%d",
+            len(step_task),
+            len(deps_block),
+            len(prompt),
+        )
+
+        raw = (self.summariser_llm.generate(prompt) or "").strip()
+        answer = (self._sanitise_to_text(raw) or "").strip()
+
+        if not answer:
+            logger.warning("[ExecutionMixin._answer_by_itself_for_step_task] empty LLM output -> fallback message")
+            answer = "I couldn't produce an answer."
+
+        return answer
+
+    def _answer_by_itself_for_step(self, step: Step) -> str:
+        step_task = self._sanitise_to_text(getattr(step.plan, "instruction", "") or "").strip()
+
+        deps = list(getattr(self, "_active_step_dependencies", []) or [])
+        if not deps:
+            deps = list(getattr(step.plan, "depends_on", []) or [])
+
+        prev = list(getattr(self, "_previous_step_results", []) or [])
+
+        deps_block = self._build_deps_block(deps=deps, previous_step_results=prev)
+
+        logger.info(
+            "[ExecutionMixin._answer_by_itself_for_step] step=%d deps=%s prev_results=%d",
+            getattr(step.plan, "index", -1),
+            deps or "[]",
+            len(prev),
+        )
+
+        return self._answer_by_itself_for_step_task(step_task=step_task, deps_block=deps_block)
+
     def _handle_low_confidence_step_result(
         self,
         *,

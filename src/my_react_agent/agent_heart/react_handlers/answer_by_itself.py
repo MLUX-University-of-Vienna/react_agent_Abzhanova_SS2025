@@ -32,7 +32,7 @@ class AnswerByItselfHandler(ActionHandler):
 
         tool_call = empty_tool_call("answer_by_itself")
 
-        answer_text = (ctx.services.answer_generator.fallback(current_step.plan.instruction) or "").strip()
+        answer_text = (ctx.agent._answer_by_itself_for_step(current_step) or "").strip()
 
         formatter = TranscriptFormatter(ctx.format_action_line, ctx.format_observation_line)
         formatter.append_action(ctx.transcript_lines, step_index, "ANSWER_BY_ITSELF", "", current_step.plan.instruction)

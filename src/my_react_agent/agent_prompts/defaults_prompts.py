@@ -183,27 +183,23 @@ DEFAULT_PROMPTS: dict[PromptId, PromptTemplate] = {
         description="Synthesize final answer from executed trace and context snippets",
         version="1",
     ),
-    PromptId.ANSWER_GENERATOR_MAIN: PromptTemplate(
+    PromptId.ANSWER_BY_ITSELF: PromptTemplate(
         text=(
-            "Based on this result, answer the query.\n\n"
-            "Query: {query}\n"
-            "Result: {result}\n\n"
-            "Format:\n"
-            "Answer: <your answer here>"
+            "You are answering the CURRENT STEP without using any external tools.\n\n"
+            "CURRENT STEP TASK:\n"
+            "{step_task}\n\n"
+            "DEPENDENCY ANSWERS (only if this step depends on them):\n"
+            "{deps_block}\n\n"
+            "Rules:\n"
+            "- Use dependency answers as context if relevant.\n"
+            "- If the task asks for real-time / current conditions (e.g., weather 'right now', prices today, live info), "
+            " you MUST say you cannot know it without a tool and suggest what tool/data source would be needed.\n"
+            "- Do NOT invent numbers, times, or current conditions.\n"
+            "- Be concise: 1–3 sentences.\n\n"
+            "Answer:"       
         ),
-        required_vars={"query", "result"},
-        description="Simple answer generator based on a tool result",
-        version="1",
-    ),
-    PromptId.ANSWER_GENERATOR_FALLBACK: PromptTemplate(
-        text=(
-            "Unable to get a confident answer via tools.\n"
-            "Please answer this directly.\n\n"
-            "Question: {query}\n\n"
-            "Answer:"
-        ),
-        required_vars={"query"},
-        description="Fallback answer generator when tools fail or are unavailable",
+        required_vars={"step_task", "deps_block"},
+        description="LLM answers the step's task according to its knowledge",
         version="1",
     ),
     PromptId.LLM_EXTRACT_NAMES: PromptTemplate(

@@ -230,9 +230,9 @@ def create_parameter_assessor_factories() -> List[ParameterAssessorFactory]:
     factories: List[ParameterAssessorFactory] = []
 
     candidates = [
-        ("my_react_agent.confidence_assessment.assessors.entity_alignment", "EntityAlignmentAssessor"),
-        ("my_react_agent.confidence_assessment.assessors.answer_quality", "AnswerQualityAssessor"),
-        ("my_react_agent.confidence_assessment.assessors.answer_realism", "AnswerRealismAssessor"),
+        ("my_react_agent.confidence_assessment.entity_alignment_assessor", "EntityAlignmentAssessor"),
+        ("my_react_agent.confidence_assessment.answer_quality_assessor", "AnswerQualityAssessor"),
+        ("my_react_agent.confidence_assessment.answer_realism_assessor", "AnswerRealismAssessor"),
     ]
 
     for mod_path, cls_name in candidates:
