@@ -21,7 +21,7 @@ LangChain and LlamaIndex are strong frameworks—but they’re optimised for *di
   This makes debugging and evaluation predictable because the “paper trail” is built into the runtime.
 
 - **Evidence-first answering as a default design**  
-  The final answer is synthesized from collected **observations + `Evidence` objects**, making it straightforward to enforce “don’t invent facts” policies and to display citations/snippets in a consistent format.
+  The final answer is synthesised from collected **observations + `Evidence` objects**, making it straightforward to enforce “don’t invent facts” policies and to display citations/snippets in a consistent format.
 
 - **Confidence-gated retries with a controlled recovery loop**  
   Low-confidence step results trigger a deterministic retry policy (switch action/tool, adjust input, or stop/clarify).  
@@ -48,7 +48,7 @@ Use this project when you care most about:
 ## Key features
 
 - **Plan → Execute → Finalise pipeline**  
-  Creates a step plan, runs each step deterministically, then synthesizes a final answer.
+  Creates a step plan, runs each step deterministically, then synthesises a final answer.
 - **Explicit traceability**  
   Step transcript + evidence pack per step (what happened, why, and what was found).
 - **Evidence-first design**  
@@ -62,7 +62,7 @@ Use this project when you care most about:
 - **Memory**  
   `QueryMemory` (per question) + `ConversationMemory` (cross-turn) for entities, steps, and observations.
 - **Prompt registry**  
-  Centralized prompt management (`PromptRegistry`) with overridable defaults.
+  Centralised prompt management (`PromptRegistry`) with overridable defaults.
 - **Plugin support**  
   Optional runtime extension via `REACT_AGENT_PLUGINS`.
 
@@ -462,7 +462,7 @@ class PictureAnalyserTool(AgentTool):
     def refiner_instructions(self) -> str:
         return (
             "Return ONE line in the format:\n"
-            "path:<file_path> question:<what to analyze>\n"
+            "path:<file_path> question:<what to analyse>\n"
             "Rules:\n"
             "- Must include path:\n"
             "- Use the exact file path from the user message if present\n"
@@ -856,4 +856,97 @@ factories.append(lambda llm, prompts, _cls=cls: _cls(llm, prompts=prompts))
 ```
 that is all what we need.
 
-#### Step 3 — Implement RelevanceAssessor
+## Adding a Custom LLM Adapter (New `LLMBase` Implementation)
+
+`my-react-agent` treats LLMs as **pluggable adapters**. Anything that implements the `LLMBase` interface can power the agent’s roles:
+
+- **planner_llm** → creates step plans
+- **summariser_llm** → synthesises step summaries + final answer
+- **confidence_llm** → evaluates step quality/confidence (for retries)
+- **refiner_llm** → turns (question + step task) into strict tool input
+
+This section shows how to implement a new adapter and wire it into the agent, with an **Ollama DeepSeek** example.
+
+---
+
+#### Step 1 - The `LLMBase` contract
+
+All adapters must implement:
+
+```python
+from abc import ABC, abstractmethod
+
+class LLMBase(ABC):
+    @abstractmethod
+    def generate(self, prompt: str, **kwargs) -> str:
+        pass
+```
+
+- Rules for adapters
+1. generate() must return a plain string.
+2. 2.Accept **kwargs so different parts of the agent can pass role-specific overrides (e.g. temperature, stop, num_ctx).
+3. Raise a clear exception if the backend is unreachable.
+
+
+#### Step 2 - Use a Custom LLM Adapter in the Agent
+You can mix different models per role (common in practice):
+- larger model for planning/summarisation
+- cheaper/faster model for refinement/confidence
+
+```python
+from my_react_agent.agent_heart.react_agent import ReActAgent
+from my_react_agent.agent_memory.llm_entity_extractor import LLMEntityExtractor
+
+from my_react_agent.llm_adapters.ollama_deepseek_llm import OllamaDeepseekLLM
+from my_react_agent.llm_adapters.ollama_gemma_llm import OllamaGemmaLLM
+
+# actions (example)
+from my_react_agent.agent_core.agent_actions import (
+    AnswerByItselfAction, ClarifyAction, UseToolAction, StopAction
+)
+from my_react_agent.agent_core.agent_actions.need_context_action import NeedContextAction
+
+from my_react_agent.agent_prompts.prompt_registry import PromptRegistry
+from my_react_agent.agent_prompts.defaults_prompts import DEFAULT_PROMPTS
+
+def build_agent(tools: dict):
+    prompts = PromptRegistry(_defaults=dict(DEFAULT_PROMPTS))
+
+    planner_llm = OllamaDeepseekLLM(model="deepseek-r1:8b", temperature=0.2)
+    summariser_llm = OllamaDeepseekLLM(model="deepseek-r1:8b", temperature=0.1)
+    confidence_llm = OllamaGemmaLLM(model="gemma3:4b", temperature=0.0)
+    refiner_llm = OllamaGemmaLLM(model="gemma3:4b", temperature=0.0)
+
+    entity_extractor = LLMEntityExtractor(summariser_llm, prompts=prompts)
+
+    step_actions = [
+        NeedContextAction(),
+        AnswerByItselfAction(),
+        ClarifyAction(),
+        UseToolAction(),
+        StopAction(),
+    ]
+
+    low_conf_actions = [
+        NeedContextAction(),
+        UseToolAction(),
+        AnswerByItselfAction(),
+        StopAction(),
+        ClarifyAction(),
+    ]
+
+    agent = ReActAgent(
+        planner_llm=planner_llm,
+        summariser_llm=summariser_llm,
+        confidence_llm=confidence_llm,
+        refiner_llm=refiner_llm,
+        entity_extractor=entity_extractor,
+        tools=tools,
+        prompts=prompts,
+        max_steps=12,
+        step_actions=step_actions,
+        low_conf_actions=low_conf_actions,
+    )
+
+    return agent
+```
