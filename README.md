@@ -7,11 +7,41 @@ It plans a multi-step solution, executes each step via actions/tools, evaluates 
 
 ## Why this project
 
-Most “agent” demos blur reasoning, tool calls, and final output into one opaque blob. `my-react-agent` is built for:
+LangChain and LlamaIndex are strong frameworks—but they’re optimised for *different priorities*:
 
-- **Auditability**: every step has an action, tool input/output, observation, evidence, and confidence.
-- **Reliability**: low-confidence steps trigger a controlled recovery loop (retry with different actions/tools).
-- **Extensibility**: add new tools/actions/plugins without rewriting the orchestration.
+- **LangChain** is an **integration + composition** system (chains, agents, tool wrappers, retrievers, many providers). It’s great when you want to assemble an app quickly from lots of building blocks.
+- **LlamaIndex** is a **data/RAG framework** (ingestion, indexing, retrieval, routing, structured querying). It’s great when your core problem is “connect LLMs to your data” at scale.
+
+`my-react-agent` exists for a different goal: **a small, inspectable agent runtime where traceability, evidence and reliability are first-class — not optional add-ons**.
+
+### What you get here that’s harder to guarantee in LangChain/LlamaIndex
+
+- **Traceability as a core invariant (not a plugin / external service dependency)**  
+  Every step *must* produce a structured record: action decision → tool input/output → observation → evidence → confidence.  
+  This makes debugging and evaluation predictable because the “paper trail” is built into the runtime.
+
+- **Evidence-first answering as a default design**  
+  The final answer is synthesized from collected **observations + `Evidence` objects**, making it straightforward to enforce “don’t invent facts” policies and to display citations/snippets in a consistent format.
+
+- **Confidence-gated retries with a controlled recovery loop**  
+  Low-confidence step results trigger a deterministic retry policy (switch action/tool, adjust input, or stop/clarify).  
+  Many frameworks can *evaluate*, but `my-react-agent` treats step-level confidence as an orchestration primitive.
+
+- **Cleaner extension points for research/prototyping**  
+  Instead of customising a big graph of components, you can add a new behavior by implementing:
+  - an `Action` (LLM-visible selection rule + instructions)
+  - an `ActionHandler` (runtime execution)
+  
+  This makes it easier to experiment with new “agent behaviors” (like GreetingAction, guardrails, special routing) without rewriting the core loop.
+
+### When `my-react-agent` is the better choice
+
+Use this project when you care most about:
+- **auditing** (exactly what happened and why, step-by-step),
+- **reproducible debugging** (structured traces you can log or test),
+- **grounded outputs** (final answer constrained to collected evidence),
+- **reliability under uncertainty** (confidence gating + retries),
+- **lightweight core** (clear orchestration over large ecosystem complexity).
 
 ---
 
@@ -377,3 +407,240 @@ step_actions = [
     StopAction(),
 ]
 ```
+
+## Adding a Custom Tool (Example: `PictureAnalyserTool`)
+
+In `my-react-agent`, a **tool** is any component that implements the `AgentTool` interface:
+
+- **Input**: a single `str` (`tool_input`)
+- **Output**: an `Evidence` object (structured, traceable, timestamped)
+
+Tools are executed through a single boundary (`ToolExecutor`) and are typically triggered by the `USE_TOOL` action (via `UseToolAction`).
+
+This section shows how to add a new tool: a **picture analyser** that reads an image from disk and returns structured evidence.
+
+---
+
+#### Step 1 - Create the tool class
+
+Create: `evaluation/tools/picture_analyser_tool.py`
+
+```python
+from __future__ import annotations
+
+import os
+import re
+from datetime import datetime
+from typing import Optional
+
+from my_react_agent.agent_memory.data_structures import Evidence
+from my_react_agent.tool_management.tools.agent_tool import AgentTool
+
+try:
+    from PIL import Image
+except Exception:
+    Image = None
+
+
+class PictureAnalyserTool(AgentTool):
+    _PATH_RE = re.compile(r"(?:^|\s)path:(?P<path>\S+)", flags=re.I)
+    _QUESTION_RE = re.compile(r"(?:^|\s)question:(?P<q>.+)$", flags=re.I)
+
+    @property
+    def name(self) -> str:
+        return "picture_analyser"
+
+    @property
+    def description(self) -> str:
+        return (
+            "Analyse an image from a local file path and return basic properties "
+            "(size, format, mode) and simple heuristics. "
+            "Input should include path:<file> and optionally question:<...>."
+        )
+
+    @property
+    def refiner_instructions(self) -> str:
+        return (
+            "Return ONE line in the format:\n"
+            "path:<file_path> question:<what to analyze>\n"
+            "Rules:\n"
+            "- Must include path:\n"
+            "- Use the exact file path from the user message if present\n"
+            "- Do NOT output JSON\n"
+            "- Keep it under 200 characters if possible\n"
+            "Examples:\n"
+            "path:./img/cat.jpg question:Describe what you see\n"
+            "path:/tmp/photo.png question:Read any visible text"
+        )
+
+    @property
+    def refiner_input_format(self) -> str:
+        return "path:<file_path> question:<what to analyse>"
+
+    @property
+    def refiner_input_regex(self) -> Optional[str]:
+        # Simple validation: must contain "path:" and some non-space path.
+        return r"^.*\bpath:\S+.*$"
+
+    @property
+    def refiner_forbidden(self) -> str:
+        return "Forbidden: JSON, newlines, URLs instead of file paths."
+
+    @property
+    def refiner_max_chars(self) -> int:
+        return 300
+
+    # --- Core execution ---
+    def execute(self, input: str) -> Evidence:
+        if Image is None:
+            return Evidence(
+                tool=self.name,
+                content="PictureAnalyserTool requires Pillow (PIL). Install: pip install pillow",
+                url=None,
+                extracted={"error": True, "reason": "pillow_missing"},
+                as_of=datetime.utcnow(),
+                confidence=0.1,
+            )
+
+        raw = (input or "").strip()
+        path = self._extract_path(raw)
+        question = self._extract_question(raw)
+
+        if not path:
+            return Evidence(
+                tool=self.name,
+                content="Missing image path. Provide: path:<file_path> question:<...>",
+                url=None,
+                extracted={"error": True, "reason": "missing_path", "tool_input": raw},
+                as_of=datetime.utcnow(),
+                confidence=0.1,
+            )
+
+        if not os.path.exists(path):
+            return Evidence(
+                tool=self.name,
+                content=f"Image file not found: {path}",
+                url=None,
+                extracted={"error": True, "reason": "file_not_found", "path": path},
+                as_of=datetime.utcnow(),
+                confidence=0.1,
+            )
+
+        try:
+            with Image.open(path) as img:
+                w, h = img.size
+                mode = img.mode
+                fmt = (img.format or "").upper()
+
+                # very lightweight "analysis"
+                notes = []
+                if w >= 2000 or h >= 2000:
+                    notes.append("high_resolution")
+                if mode in ("RGBA", "LA"):
+                    notes.append("has_alpha")
+
+                # Optional: compute a tiny heuristic (average brightness) without heavy ML
+                avg_brightness = None
+                try:
+                    gray = img.convert("L")
+                    small = gray.resize((64, 64))
+                    px = list(small.getdata())
+                    avg_brightness = sum(px) / max(1, len(px))  # 0..255
+                except Exception:
+                    pass
+
+            content_lines = [
+                f"PATH: {path}",
+                f"FORMAT: {fmt or '(unknown)'}",
+                f"SIZE: {w}x{h}",
+                f"MODE: {mode}",
+            ]
+            if question:
+                content_lines.append(f"QUESTION: {question}")
+            if notes:
+                content_lines.append(f"NOTES: {', '.join(notes)}")
+            if avg_brightness is not None:
+                content_lines.append(f"AVG_BRIGHTNESS: {avg_brightness:.1f}/255")
+
+            return Evidence(
+                tool=self.name,
+                content="\n".join(content_lines),
+                url=None,
+                extracted={
+                    "path": path,
+                    "format": fmt,
+                    "width": w,
+                    "height": h,
+                    "mode": mode,
+                    "notes": notes,
+                    "avg_brightness": avg_brightness,
+                    "question": question,
+                },
+                as_of=datetime.utcnow(),
+                confidence=0.8,
+            )
+
+        except Exception as e:
+            return Evidence(
+                tool=self.name,
+                content=f"Failed to analyse image: {e!r}",
+                url=None,
+                extracted={"error": True, "reason": "exception", "path": path},
+                as_of=datetime.utcnow(),
+                confidence=0.1,
+            )
+
+    def _extract_path(self, s: str) -> str:
+        m = self._PATH_RE.search(s or "")
+        if not m:
+            return ""
+        return (m.group("path") or "").strip().strip('"').strip("'")
+
+    def _extract_question(self, s: str) -> str:
+        m = self._QUESTION_RE.search(s or "")
+        if not m:
+            return ""
+        return (m.group("q") or "").strip()
+```
+
+ What this tool does: 
+- Takes a path:<file> input
+- Loads the image using Pillow
+- Returns an Evidence object with structured fields in extracted
+
+#### Step 2 - Create the tool class
+in evaluation/main_to_run_agent.py: 
+
+```python
+def _init_picture_analyser_tool() -> Optional[object]:
+    try:
+        from .tools.picture_analyser_tool import PictureAnalyserTool
+        return PictureAnalyserTool()
+    except Exception as e:
+        logger.exception("[tools] picture_analyser failed to init: %r", e)
+        return None
+
+
+def create_tools() -> Dict[str, object]:
+    tools: Dict[str, object] = {}
+
+    # ... existing tools ...
+
+    pa = _init_picture_analyser_tool()
+    if pa is not None:
+        tools["picture_analyser"] = pa
+
+    logger.info("[create_tools] Tools initialised count=%d keys=%s", len(tools), list(tools.keys()))
+    return tools
+```
+
+#### How the agent decides to call your tool
+- The planner LLM sees each tool’s:
+1. name
+2. description
+- When it chooses USE_TOOL, it outputs a tool_name and the refiner produces tool_input.
+
+-To make your tool easier to select:
+1. Use a very specific description
+2. Provide strict refiner_instructions and refiner_input_regex
+3. Keep the input format simple (path:... question:...)
