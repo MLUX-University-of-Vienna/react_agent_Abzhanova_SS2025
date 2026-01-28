@@ -216,6 +216,16 @@ if __name__ == "__main__":
 - Parameter assessors (factory-driven)  
   Examples: `EntityAlignmentAssessor`, `AnswerQualityAssessor`, `AnswerRealismAssessor`.
 
+**Tool input refinement (ToolQueryRefiner)**
+- Before calling a tool, the agent converts current step's task into the exact tool input string expected by that tool. This is what prevents “LLM prose” from being fed into tools and standardizes tool calls.
+- ToolQueryRefiner relies on AgentTool exposing a “refiner contract”. Tools can implement these properties to constrain/refine the model’s output:
+`refiner_instructions`: str — tool-specific rules (“Return a normal search query…”, etc.)
+`refiner_input_format`: str — short format spec for expected input
+`refiner_input_regex`: Optional[str] — strict regex for allowed inputs
+`refiner_forbidden`: str — explicit forbidden patterns
+`refiner_examples`: str / get_examples() — optional examples to guide the refiner
+`refiner_max_chars`: int — max tool input length (hard cap)
+
 **Prompts**
 - `PromptRegistry`  
   Stores prompt templates for planning, refinement, confidence assessment, summarisation.
