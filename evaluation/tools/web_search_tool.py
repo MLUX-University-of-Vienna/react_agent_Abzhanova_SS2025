@@ -42,7 +42,7 @@ class DuckDuckGoTool(AgentTool):
 
     @property
     def description(self) -> str:
-        return "Web search via DuckDuckGo (no API key). Use for real-time or frequently changing facts."
+        return "Web search via DuckDuckGo. Use for real-time or frequently changing facts."
 
     _REFINER_MAX_CHARS = 300
     _REFINER_INPUT_FORMAT = "just: <query> (defaults to web)\n"
