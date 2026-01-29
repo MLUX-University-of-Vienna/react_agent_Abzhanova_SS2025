@@ -906,3 +906,167 @@ TypeError: Can't instantiate abstract class RelevanceAssessor without an impleme
 13:15:47 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory linked to Query id=qry_254c436b8fd947af8cd0ce2584b91608
 13:15:47 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory appended turn query_id=qry_254c436b8fd947af8cd0ce2584b91608 q_len=30 a_len=33
 13:15:47 INFO [agent_heart.react_agent] [ReActAgent.handle] done transcript_lines=7 executed_steps=1
+13:35:39 INFO [__main__] enabled assessor my_react_agent.confidence_assessment.entity_alignment_assessor.EntityAlignmentAssessor
+13:35:39 INFO [__main__] enabled assessor my_react_agent.confidence_assessment.answer_quality_assessor.AnswerQualityAssessor
+13:35:39 INFO [__main__] enabled assessor my_react_agent.confidence_assessment.answer_realism_assessor.AnswerRealismAssessor
+13:35:39 INFO [agent_heart.react_agent] [ReActAgent.__init__] PromptRegistry ready defaults=15 overrides=0
+13:35:39 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory initialised max_turns=5
+13:35:39 INFO [my_react_agent.agent_memory.query_memory] QueryMemory initialised (no active query)
+13:35:39 INFO [my_react_agent.confidence_assessment.entity_alignment_assessor] [EntityAlignmentAssessor.__init__] ready prompt_id=confidence_entity_alignment fallback=0.50
+13:35:39 INFO [agent_heart.react_agent] [ReActAgent.__init__] Built ParameterAssessor from factory: EntityAlignmentAssessor
+13:35:39 INFO [my_react_agent.confidence_assessment.answer_quality_assessor] [AnswerQualityAssessor.__init__] ready prompt_id=confidence_answer_quality fallback=0.50
+13:35:39 INFO [agent_heart.react_agent] [ReActAgent.__init__] Built ParameterAssessor from factory: AnswerQualityAssessor
+13:35:39 INFO [my_react_agent.confidence_assessment.answer_realism_assessor] [AnswerRealismAssessor.__init__] ready prompt_id=confidence_answer_realism fallback=0.50
+13:35:39 INFO [agent_heart.react_agent] [ReActAgent.__init__] Built ParameterAssessor from factory: AnswerRealismAssessor
+13:35:39 INFO [my_react_agent.confidence_assessment.confidence_assessor] [ConfidenceAssessor.__init__] fallback=0.50 max_decimals=2 mismatch_penalty=0.98 include_tool_result_in_quality=True tool_result_max_chars=12000 log_parse_failures=True assessors=3
+13:35:39 INFO [agent_heart.react_agent] [ReActAgent.__init__] ConfidenceAssessor enabled assessors=3
+13:35:39 INFO [agent_heart.react_agent] [ReActAgent.__init__] Ready tools=1 max_steps=8 step_actions=5 low_conf_actions=5
+13:35:44 INFO [agent_heart.react_agent] [ReActAgent.handle] start question_len=16
+13:35:44 INFO [my_react_agent.agent_memory.query_memory] New query session started id=qry_f95f3e4fcc72406494806a1657875a17 text_length=16
+13:35:44 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory synced query_id=qry_f95f3e4fcc72406494806a1657875a17 entities=0 (new=0) preview=[]
+13:35:44 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory linked to Query id=qry_f95f3e4fcc72406494806a1657875a17
+13:35:44 INFO [agent_heart.react_agent] [ReActAgent._should_separate_question] Prompt length=706
+13:36:01 INFO [httpx] HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+13:36:01 INFO [agent_heart.react_agent] [ReActAgent._should_separate_question] RAW: <think>
+Okay, so I need to figure out whether the user's question should be handled as a single step or multiple steps. The question is "Compute (23*7)-5." Let me break this down.
+
+First, I'll look at what the question is asking. It involves a mathematical computation: multiplying 23 by 7 and then subtracting 5 from the result. This seems straightforward because it's a single arithmetic operation with two multiplication steps and one subtraction step.
+
+The guidelines say to separate into multiple steps if there are multiple entities to compare, complex reasoning, dependent sub-questions, or multiple calculations over time periods. In this case, the question is just a simple computation without any of those elements. It doesn't require comparing different values or solving multiple parts that depend on each other.
+
+I should also consider whether it's a single direct lookup or a simple factual question. This isn't about looking up information; it's performing a calculation. However, since it's a single mathematical expression, it can be handled in one step without needing to break it down further.
+
+So, I think the correct answer is false because it doesn't meet any of the criteria for separation into multiple steps.
+</think>
+
+{"separate": false, "reason": "It involves a straightforward arithmetic computation that can be performed in a single step."}
+13:36:01 WARNING [agent_heart.react_agent] [_safe_parse_json_object] JSONDecodeError=Expecting value pos=0 tail='n\'t meet any of the criteria for separation into multiple steps.\n</think>\n\n{"separate": false, "reason": "It involves a straightforward arithmetic computation that can be performed in a single step."}'
+13:36:01 INFO [agent_heart.react_agent] [ReActAgent._should_separate_question] separate=False reason=It involves a straightforward arithmetic computation that can be performed in a single step.
+13:36:01 INFO [agent_heart.react_agent] [ReActAgent.handle] separate_question=False
+13:36:01 INFO [agent_heart.react_agent] [ReActAgent.handle] using single-step plan
+13:36:01 INFO [agent_heart.react_agent] [ReActAgent.handle] executing steps=1 max_steps=8
+13:36:01 INFO [agent_heart.react_agent] [ReActAgent.handle] Step=1/1 start idx=1 deps=[]
+13:36:28 INFO [httpx] HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+13:36:28 INFO [agent_heart.react_agent] [ReActAgent._decide_action_for_step] Step=1 RAW: <think>
+Okay, so I need to figure out how to execute the task of computing (23*7)-5. Let me break this down step by step.
+
+First, looking at the available actions: RESOLVE_PRONOUNS_AND_OMITTED ENTITIES, ANSWER_BY_ITSELF, CLARIFY, USE_TOOL, and STOP. I need to choose exactly one that fits the current situation.
+
+The task is straightforward: compute a mathematical expression. The user has already provided the specific calculation they want done, which is (23*7)-5. There are no pronouns or omitted entities here, so RESOLVE_PRONOUNS_AND_OMITTED ENTITIES doesn't apply because it's meant for situations where context is unclear due to missing information.
+
+Next, ANSWER_BY_ITSELF is an option if the step can be answered with stable facts. Since this is a simple arithmetic problem, it's unlikely to change over time and can be answered using general knowledge. However, I should consider whether it requires real-world data or not. In this case, it's purely computational, so ANSWER_BY_ITSELF might work.
+
+CLARIFY is used when the question isn't clear even after getting context. Here, the task is very clear, so CLARIFY isn't necessary.
+
+USE_TOOL is appropriate if there's a tool available that can handle the step reliably. The tools listed include calculator, which can evaluate arithmetic expressions. Since (23*7)-5 is an arithmetic problem, using the calculator tool makes sense here.
+
+STOP should be used only when there are repeated failures or a hard boundary. There's no indication of that in this case, so it's not applicable.
+
+Between ANSWER_BY_ITSELF and USE_TOOL: ANSWER_BY_ITSELF would involve the LLM answering directly, while USE_TOOL uses an external tool like calculator. Since the task is computational, using the calculator tool is more precise and reliable for arithmetic operations. Therefore, choosing USE_TOOL with calculator as the tool name and the input being "23*7-5" seems appropriate.
+
+I should make sure that the tool_input is minimal and deterministic, so just providing the expression itself is sufficient.
+</think>
+
+```json
+{
+  "think": "<short>",
+  "action": "USE_TOOL",
+  "tool_name": "calculator",
+  "tool_input": "23*7-5",
+  "message": ""
+}
+```
+13:36:28 INFO [agent_heart.react_agent] [ReActAgent._decide_action_for_step] Plan instruction=Compute (23*7)-5
+13:36:28 WARNING [agent_heart.react_agent] [_safe_parse_json_object] JSONDecodeError=Expecting value pos=0 tail='erministic, so just providing the expression itself is sufficient.\n</think>json\n{\n  "think": "<short>",\n  "action": "USE_TOOL",\n  "tool_name": "calculator",\n  "tool_input": "23*7-5",\n  "message": ""\n}'
+13:36:28 INFO [agent_heart.react_agent] [ReActAgent._decide_action_for_step] Step=1 Parsed action=USE_TOOL tool=calculator tool_input_len=6
+13:36:28 INFO [agent_heart.react_agent] [ReActAgent.handle] Step=1 initial decision action=USE_TOOL tool=calculator
+13:36:28 INFO [my_react_agent.tool_management.tool_query_refiner] [refine] Start refine tool=calculator step_task='Compute (23*7)-5' user_question_len=16
+13:36:28 INFO [httpx] HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 404 Not Found"
+13:36:28 ERROR [my_react_agent.tool_management.tool_query_refiner] [refine] exception -> fallback error=ConnectionError('Ollama error calling model=\'qwen2.5:3b\'. Is Ollama running on localhost:11434 and is the model pulled? Original error: ResponseError("model \'qwen2.5:3b\' not found")')
+Traceback (most recent call last):
+  File "/Users/zhaniya/Desktop/git-zaebaaal/my-react-agent/evaluation/main_to_run_agent.py", line 89, in generate
+    resp = ollama.chat(
+           ^^^^^^^^^^^^
+  File "/Users/zhaniya/Documents/anaconda/anaconda3/lib/python3.12/site-packages/ollama/_client.py", line 342, in chat
+    return self._request(
+           ^^^^^^^^^^^^^^
+  File "/Users/zhaniya/Documents/anaconda/anaconda3/lib/python3.12/site-packages/ollama/_client.py", line 180, in _request
+    return cls(**self._request_raw(*args, **kwargs).json())
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zhaniya/Documents/anaconda/anaconda3/lib/python3.12/site-packages/ollama/_client.py", line 124, in _request_raw
+    raise ResponseError(e.response.text, e.response.status_code) from None
+ollama._types.ResponseError: model 'qwen2.5:3b' not found (status code: 404)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/zhaniya/Desktop/git-zaebaaal/my-react-agent/src/my_react_agent/tool_management/tool_query_refiner.py", line 120, in refine
+    raw = (self.llm.generate(prompt) or "").strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/zhaniya/Desktop/git-zaebaaal/my-react-agent/evaluation/main_to_run_agent.py", line 105, in generate
+    raise ConnectionError(
+ConnectionError: Ollama error calling model='qwen2.5:3b'. Is Ollama running on localhost:11434 and is the model pulled? Original error: ResponseError("model 'qwen2.5:3b' not found")
+13:36:28 INFO [my_react_agent.tool_management.tool_query_refiner] [fallback] out='Compute (23*7)-5'
+13:36:28 INFO [agent_heart.react_agent] [ReActAgent._execute_and_observe] Executing tool=calculator input_len=16
+13:36:38 INFO [httpx] HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+13:36:38 INFO [agent_heart.react_agent] [ReActAgent._execute_and_observe] Observation_len=678 evidence_len=14 raw_len=14
+13:36:38 INFO [httpx] HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 404 Not Found"
+13:36:38 WARNING [my_react_agent.confidence_assessment.entity_alignment_assessor] [EntityAlignmentAssessor] LLM failed error=ConnectionError('Ollama error calling model=\'qwen2.5:3b\'. Is Ollama running on localhost:11434 and is the model pulled? Original error: ResponseError("model \'qwen2.5:3b\' not found")') raw=''
+13:36:38 INFO [httpx] HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 404 Not Found"
+13:36:38 WARNING [my_react_agent.confidence_assessment.answer_quality_assessor] [AnswerQualityAssessor] LLM failed error=ConnectionError('Ollama error calling model=\'qwen2.5:3b\'. Is Ollama running on localhost:11434 and is the model pulled? Original error: ResponseError("model \'qwen2.5:3b\' not found")') raw=''
+13:36:38 INFO [httpx] HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 404 Not Found"
+13:36:38 WARNING [my_react_agent.confidence_assessment.answer_realism_assessor] [AnswerRealismAssessor] LLM failed error=ConnectionError('Ollama error calling model=\'qwen2.5:3b\'. Is Ollama running on localhost:11434 and is the model pulled? Original error: ResponseError("model \'qwen2.5:3b\' not found")') raw=''
+13:36:38 INFO [agent_heart.react_agent] [ReActAgent._should_retry_low_conf_step] Step=1 low-confidence conf=0.00<th=0.70 attempt=1/10
+13:36:38 INFO [agent_heart.react_agent] [ReActAgent._handle_low_confidence_action_result] step_task='Compute (23*7)-5'
+13:36:38 INFO [agent_heart.react_agent] [ReActAgent._handle_low_confidence_action_result] Prompt length=3481
+13:36:38 INFO [agent_heart.react_agent] [ReActAgent._handle_low_confidence_action_result] Prompt:
+A previously executed step produced a result that looks unreliable or not well-aligned with the current step task.
+
+You must now choose the BEST next action from this action catalogue:
+- RESOLVE_PRONOUNS_AND_OMITTED ENTITIES
+  when_to_pick: Pick if the context of the CURRENT STEP is unclear because it contains pronouns and/or omitted entities. Do NOT pick if the CURRENT STEP's task is to define/determine/resolve those pronouns or omitted entities.
+  instructions: Resolves pronouns and omitted entities in the CURRENT STEP to understand the context. Rewrites the step task into an explicit, self-contained instruction by replacing pronouns with entities. 
+- USE_TOOL
+  when_to_pick: Pick when user asks about real time data and at least one available tool can reliably complete the current step in one deterministic call.
+  instructions: Invoke exactly ONE tool to complete the current step.
+Choose the most appropriate tool based strictly on its description.
+Provide minimal deterministic tool_input.
+Do not bundle multiple entities/facts.
+- ANSWER_BY_ITSELF
+  when_to_pick: Pick ONLY when the step can be answered from stable, textbook-level facts (very unlikely to change over 3+ years).DO NOT pick if the step asks for any real-world data that may change.
+  instructions: Answers using only the LLM's general knowledge. 
+- STOP
+  when_to_pick: Pick when >3 times was choosen the same action with same input.
+  instructions: End the session immediately and return a short acknowledgement. Use only when the user explicitly cancels, when a hard boundary is reached, or when repeated failures prevent progress and no safe recovery path exists.
+- CLARIFY
+  when_to_pick: Pick when the question is not clear even after completed NEED_CONTEXT action.
+  instructions: Ask ONE clarification question only when the step cannot be completed reliably.
+Single sentence, <=25 words, with 2–4 inline options separated by slashes.
+
+Available tools:
+- calculator
+  description: Safely evaluates basic arithmetic expressions.
+
+
+General rules:
+1) Obey each tool's description and limits exactly. Do NOT imagine extra abilities. 
+2) Avoid repeating the exact same (tool_name, tool_input) pair that already failed. 
+Step task:
+Compute (23*7)-5
+
+Previously used tool:
+- name: calculator
+- input: 23*7-5
+
+Step result (possibly unreliable):
+Step 1 produced a low-confidence result.
+Action used: USE_TOOL
+Step task: Compute (23*7)-5
+Output: <think> Okay, I need to compute (23 multiplied by 7) minus 5. Let me break this down step by step. First, I'll calculate 23 times 7. Hmm, 20 times 7 is 140, and 3 times 7 is 21. So adding those together gives me 140 plus 21, which equals 161. Now, I need to subtract 5 from that result. Subtracting 5 from 161 gives me 156. Therefore, the final answer is 156. </think> **Answer:** (23 × 7) − 5 = **156** --- ### Summary of Key Facts: 1. The multiplication of 23 and 7 results in 161. 2. Subtracting 5 from 161 yields 156. 3. The exact numeric result of the computation is 156. These facts provide a clear step-by-step breakdown of the calculation, ensuring accuracy and clarity.
+Confidence: 0.00 (threshold: 0.70)
+Tool name: calculator
+Tool input: 23*7-5
+
+Return STRICT JSON ONLY with this schema:
+{"action":"one of: RESOLVE_PRONOUNS_AND_OMITTED ENTITIES, USE_TOOL, ANSWER_BY_ITSELF, STOP, CLARIFY","tool_name":"<tool name or empty>","tool_input":"<tool input or empty>","step_task":"<optional revised step task or empty>","message":"<short reason>"}
+JSON:

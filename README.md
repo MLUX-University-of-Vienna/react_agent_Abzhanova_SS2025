@@ -399,7 +399,7 @@ def create_parameter_assessor_factories() -> List[ParameterAssessorFactory]:
     return factories
 
 
-# 7) QuickStart CLI
+# 7) QuickStart 
 def main() -> None:
     """
     Entry point:
@@ -501,7 +501,23 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 ```
+## If you want to disable logger messages:
+- Do this at the very top of main() (before anything imports/initializes logging):
 
+```python
+import logging
+
+def disable_all_logs() -> None:
+    # Stops everything routed through Python logging
+    logging.disable(logging.CRITICAL)
+
+    # Also silence common chatty libraries explicitly (extra-safe)
+    for name in ("httpx", "httpcore", "ollama"):
+        logging.getLogger(name).disabled = True
+
+# call first
+disable_all_logs()
+```
 
 ## Architecture (precise)
 
@@ -1644,48 +1660,262 @@ This section shows how to implement a new adapter and wire it into the agent, wi
 All adapters must implement:
 
 ```python
-from abc import ABC, abstractmethod
+from __future__ import annotations
 
-class LLMBase(ABC):
-    @abstractmethod
-    def generate(self, prompt: str, **kwargs) -> str:
-        pass
-```
+"""
+What this shows:
+1) Implement a new LLMBase adapter class (OllamaChatLLM) in ONE file
+2) Use real Ollama models per role:
+   - planner/summariser: deepseek-r1:8b
+   - confidence/refiner: qwen2.5:3b
+3) Run a tiny agent with one tool (CalculatorTool)
 
-- Rules for adapters
-1. generate() must return a plain string.
-2. 2.Accept **kwargs so different parts of the agent can pass role-specific overrides (e.g. temperature, stop, num_ctx).
-3. Raise a clear exception if the backend is unreachable.
+Prereqs:
+- Ollama installed + running: https://ollama.com
+- Pull models:
+    ollama pull deepseek-r1:8b
+    ollama pull qwen2.5:3b
 
+Run:
+    python main_custom_llm_adapter_demo.py
 
-#### Step 2 - Use a Custom LLM Adapter in the Agent
-You can mix different models per role (common in practice):
-- larger model for planning/summarisation
-- cheaper/faster model for refinement/confidence
+Try:
+    What's the capital of Germany?
+    Compute (23*7)-5
+    2^10
+"""
 
-```python
-from my_react_agent.agent_heart.react_agent import ReActAgent
-from my_react_agent.agent_memory.llm_entity_extractor import LLMEntityExtractor
+import ast
+import importlib
+import logging
+import operator as op
+import re
+import sys
+from datetime import datetime
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+from typing import Dict, List, Optional
 
-from my_react_agent.llm_adapters.ollama_deepseek_llm import OllamaDeepseekLLM
-from my_react_agent.llm_adapters.ollama_gemma_llm import OllamaGemmaLLM
+import ollama
 
-# actions (example)
-from my_react_agent.agent_core.agent_actions import (
-    AnswerByItselfAction, ClarifyAction, UseToolAction, StopAction
-)
-from my_react_agent.agent_core.agent_actions.need_context_action import NeedContextAction
-
+from my_react_agent.llm_adapters.llm_base import LLMBase
 from my_react_agent.agent_prompts.prompt_registry import PromptRegistry
 from my_react_agent.agent_prompts.defaults_prompts import DEFAULT_PROMPTS
 
-def build_agent(tools: dict):
-    prompts = PromptRegistry(_defaults=dict(DEFAULT_PROMPTS))
+from my_react_agent.agent_heart.react_agent import ReActAgent, ParameterAssessorFactory
+from my_react_agent.agent_memory.llm_entity_extractor import LLMEntityExtractor
 
-    planner_llm = OllamaDeepseekLLM(model="deepseek-r1:8b", temperature=0.2)
-    summariser_llm = OllamaDeepseekLLM(model="deepseek-r1:8b", temperature=0.1)
-    confidence_llm = OllamaGemmaLLM(model="gemma3:4b", temperature=0.0)
-    refiner_llm = OllamaGemmaLLM(model="gemma3:4b", temperature=0.0)
+from my_react_agent.agent_core.agent_actions import (
+    AnswerByItselfAction,
+    ClarifyAction,
+    UseToolAction,
+    StopAction,
+)
+from my_react_agent.agent_core.agent_actions.need_context_action import NeedContextAction
+
+from my_react_agent.tool_management.tools.agent_tool import AgentTool
+from my_react_agent.agent_memory.data_structures import Evidence
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# 1) NEW LLMBase adapter (this is the “custom adapter” you’re teaching)
+
+class OllamaChatLLM(LLMBase):
+    """
+    Custom LLM adapter that satisfies LLMBase and talks to Ollama using the Chat API.
+
+    Contract:
+    - generate(prompt: str, **kwargs) -> str
+    - accept kwargs (temperature/num_ctx/stop) so agent roles can override
+    - raise a clear exception if Ollama is unreachable
+    """
+
+    def __init__(self, model: str, temperature: float = 0.1):
+        self.model = model
+        self.temperature = float(temperature)
+
+    def generate(self, prompt: str, **kwargs) -> str:
+        temp = float(kwargs.get("temperature", self.temperature))
+        num_ctx = int(kwargs.get("num_ctx", 2048))
+        stop = kwargs.get("stop", ["<|endoftext|>"])
+
+        try:
+            # Ollama chat endpoint: treat "prompt" as one user message
+            resp = ollama.chat(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                options={
+                    "temperature": temp,
+                    "num_ctx": num_ctx,
+                    "stop": stop,
+                },
+            )
+
+            # ollama.chat returns an object/dict with message content
+            msg = resp.get("message", {}) if isinstance(resp, dict) else getattr(resp, "message", None)
+            content = msg.get("content", "") if isinstance(msg, dict) else getattr(msg, "content", "")
+            return (content or "").strip()
+
+        except Exception as e:
+            raise ConnectionError(
+                f"Ollama error calling model={self.model!r}. "
+                f"Is Ollama running on localhost:11434 and is the model pulled? "
+                f"Original error: {e!r}"
+            )
+
+
+# 2) Minimal calculator tool (keep it simple; adapter demo is the point)
+_ALLOWED_BIN_OPS = {
+    ast.Add: op.add,
+    ast.Sub: op.sub,
+    ast.Mult: op.mul,
+    ast.Div: op.truediv,
+    ast.FloorDiv: op.floordiv,
+    ast.Mod: op.mod,
+    ast.Pow: op.pow,
+}
+_ALLOWED_UNARY_OPS = {ast.UAdd: op.pos, ast.USub: op.neg}
+
+
+def _safe_eval(expr: str) -> float:
+    node = ast.parse(expr, mode="eval")
+
+    def _eval(n: ast.AST):
+        if isinstance(n, ast.Expression):
+            return _eval(n.body)
+        if isinstance(n, ast.Constant) and isinstance(n.value, (int, float)):
+            return n.value
+        if isinstance(n, ast.BinOp) and type(n.op) in _ALLOWED_BIN_OPS:
+            return _ALLOWED_BIN_OPS[type(n.op)](_eval(n.left), _eval(n.right))
+        if isinstance(n, ast.UnaryOp) and type(n.op) in _ALLOWED_UNARY_OPS:
+            return _ALLOWED_UNARY_OPS[type(n.op)](_eval(n.operand))
+        raise ValueError(f"Unsupported expression element: {type(n).__name__}")
+
+    return float(_eval(node))
+
+
+def _extract_math_expression(text: str) -> Optional[str]:
+    if not text:
+        return None
+    m = re.search(r"[0-9\.\s\+\-\*\/\(\)\%\^]+", text.strip())
+    if not m:
+        return None
+    return (m.group(0).strip().replace("^", "**")) or None
+
+
+class CalculatorTool(AgentTool):
+    @property
+    def name(self) -> str:
+        return "calculator"
+
+    @property
+    def description(self) -> str:
+        return "Safely evaluates basic arithmetic expressions."
+
+    @property
+    def refiner_instructions(self) -> str:
+        return "Output only a valid arithmetic expression using digits and operators + - * / // % ** ( ) ."
+
+    @property
+    def refiner_input_format(self) -> str:
+        return "<arithmetic expression>"
+
+    @property
+    def refiner_input_regex(self) -> Optional[str]:
+        return r"^[0-9\.\s\+\-\*\/\(\)\%\^]+$"
+
+    def execute(self, input: str) -> Evidence:
+        expr = _extract_math_expression(input or "")
+        if not expr:
+            return Evidence(
+                tool=self.name,
+                content="Calculator failed: no arithmetic expression found.",
+                url=None,
+                extracted={"error": True},
+                as_of=datetime.utcnow(),
+                confidence=0.2,
+            )
+
+        try:
+            value = _safe_eval(expr)
+            rendered = str(int(value)) if abs(value - round(value)) < 1e-12 else str(value)
+            return Evidence(
+                tool=self.name,
+                content=f"{expr} = {rendered}",
+                url=None,
+                extracted={"expression": expr, "result": value},
+                as_of=datetime.utcnow(),
+                confidence=0.95,
+            )
+        except Exception as e:
+            return Evidence(
+                tool=self.name,
+                content=f"Calculator failed: {e}",
+                url=None,
+                extracted={"error": True, "message": str(e), "expression": expr},
+                as_of=datetime.utcnow(),
+                confidence=0.1,
+            )
+
+
+# 3) Logging + prompts + optional assessor factories (unchanged patterns)
+
+def configure_logging(level: int = logging.INFO) -> None:
+    log_path = Path(__file__).resolve().with_name("agent.log")
+    handlers = [
+        logging.StreamHandler(sys.stdout),
+        RotatingFileHandler(str(log_path), maxBytes=2_000_000, backupCount=2, encoding="utf-8"),
+    ]
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        datefmt="%H:%M:%S",
+        handlers=handlers,
+        force=True,
+    )
+
+
+def create_prompt_registry() -> PromptRegistry:
+    return PromptRegistry(_defaults=dict(DEFAULT_PROMPTS))
+
+
+def create_parameter_assessor_factories() -> List[ParameterAssessorFactory]:
+    """
+    Same optional pattern you already use: build assessors if modules exist.
+    If they don't, agent still runs (just less confidence gating).
+    """
+    factories: List[ParameterAssessorFactory] = []
+    candidates = [
+        ("my_react_agent.confidence_assessment.entity_alignment_assessor", "EntityAlignmentAssessor"),
+        ("my_react_agent.confidence_assessment.answer_quality_assessor", "AnswerQualityAssessor"),
+        ("my_react_agent.confidence_assessment.answer_realism_assessor", "AnswerRealismAssessor"),
+    ]
+    for mod_path, cls_name in candidates:
+        try:
+            mod = importlib.import_module(mod_path)
+            cls = getattr(mod, cls_name)
+            factories.append(lambda llm, prompts, _cls=cls: _cls(llm, prompts=prompts))
+            logger.info("enabled assessor %s.%s", mod_path, cls_name)
+        except Exception as e:
+            logger.info("assessor %s.%s not available (skipping): %r", mod_path, cls_name, e)
+    return factories
+
+
+# 4) Main: wire custom adapter into the agent (this is the “how to use it” part)
+
+def main() -> None:
+    configure_logging(logging.INFO)
+    prompts = create_prompt_registry()
+
+    tools: Dict[str, object] = {"calculator": CalculatorTool()}
+
+    # Mix models per role (common in practice)
+    planner_llm = OllamaChatLLM(model="deepseek-r1:8b", temperature=0.2)
+    summariser_llm = OllamaChatLLM(model="deepseek-r1:8b", temperature=0.1)
+    confidence_llm = OllamaChatLLM(model="qwen2.5:3b", temperature=0.0)
+    refiner_llm = OllamaChatLLM(model="qwen2.5:3b", temperature=0.0)
 
     entity_extractor = LLMEntityExtractor(summariser_llm, prompts=prompts)
 
@@ -1696,7 +1926,6 @@ def build_agent(tools: dict):
         UseToolAction(),
         StopAction(),
     ]
-
     low_conf_actions = [
         NeedContextAction(),
         UseToolAction(),
@@ -1704,6 +1933,8 @@ def build_agent(tools: dict):
         StopAction(),
         ClarifyAction(),
     ]
+
+    parameter_assessors = create_parameter_assessor_factories()
 
     agent = ReActAgent(
         planner_llm=planner_llm,
@@ -1713,10 +1944,49 @@ def build_agent(tools: dict):
         entity_extractor=entity_extractor,
         tools=tools,
         prompts=prompts,
-        max_steps=12,
+        max_steps=8,
         step_actions=step_actions,
         low_conf_actions=low_conf_actions,
+        parameter_assessors=parameter_assessors,
     )
 
-    return agent
+    # show exactly what's configured at runtime
+    used_assessors = []
+    try:
+        used_assessors = [
+            type(a).__name__
+            for a in (getattr(getattr(agent, "confidence_assessor", None), "parameter_assessors", []) or [])
+        ]
+    except Exception:
+        used_assessors = []
+
+    print(
+        "\nCustom LLM Adapter Demo (LLMBase)\n"
+        f"- planner/summariser: deepseek-r1:8b\n"
+        f"- confidence/refiner: qwen2.5:3b\n"
+        f"- confidence assessors: {used_assessors or ['(none loaded)']}\n"
+        "\nTry:\n"
+        "  What's the capital of Germany?\n"
+        "  Compute (23*7)-5\n"
+        "  2^10\n"
+        "Type 'exit' to quit.\n"
+    )
+
+    while True:
+        user_input = input("You: ").strip()
+        if user_input.lower() in {"exit", "quit"}:
+            print("Goodbye!")
+            break
+        if not user_input:
+            continue
+        reply = agent.handle(user_input)
+        print(f"{reply}\n")
+
+
+if __name__ == "__main__":
+    main()
 ```
+
+You can mix different models per role (common in practice):
+- larger model for planning/summarisation
+- cheaper/faster model for refinement/confidence
