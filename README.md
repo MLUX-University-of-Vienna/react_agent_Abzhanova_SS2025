@@ -103,7 +103,7 @@ What this script does (high level):
 2) Creates a PromptRegistry (the agent's prompt templates)
 3) Creates a minimal Tool set (CalculatorTool) so the agent can take tool actions
 4) Creates 4 LLM "roles" (planner/summariser/confidence/refiner) using Ollama
-5) Builds a ReActAgent with your standard action handlers + confidence assessors
+5) Builds a ReActAgent with standard action handlers + confidence assessors
 6) Runs a simple CLI chat loop: you type -> agent plans -> agent executes -> prints trace
 
 Requirements (before running):
@@ -112,7 +112,7 @@ Requirements (before running):
     ollama pull gemma3:4b
 
 Run:
-    python -m evaluation.quickstart   (or whatever your module path is)
+    python -m evaluation.quickstart   (or whatever module path is)
 
 Try:
     What is (23*7) - 5?
@@ -153,10 +153,10 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-# 1) LLM adapter (Ollama -> your LLMBase interface)
+# 1) LLM adapter (Ollama ->  LLMBase interface)
 class OllamaGemmaLLM(LLMBase):
     """
-    Minimal LLM adapter that satisfies your project's LLMBase interface.
+    Minimal LLM adapter that satisfies project's LLMBase interface.
 
     The agent will call .generate(prompt) for multiple "roles":
     - planner_llm: decides whether to split the question and chooses actions/tools
@@ -256,14 +256,14 @@ def _extract_math_expression(text: str) -> Optional[str]:
     return expr or None
 
 # 3) Tool definition (CalculatorTool)
-#    - Must implement your AgentTool interface:
+#    - Must implement AgentTool interface:
 #      name, description, optional refiner contract, and execute().
 class CalculatorTool(AgentTool):
     """
     A minimal AgentTool used for the QuickStart demo.
 
     Why this exists:
-    - Your ReActAgent requires at least one tool to demonstrate "USE_TOOL".
+    - ReActAgent requires at least one tool to demonstrate "USE_TOOL".
     - Calculator is deterministic, safe, and shows end-to-end tool calling.
     """
 
@@ -276,7 +276,7 @@ class CalculatorTool(AgentTool):
     def description(self) -> str:
         return "Safely evaluates basic arithmetic expressions (e.g. 2+2, (3.5*4)-1, 2^10)."
 
-    # ToolQueryRefiner contracts (used by your refiner_llm to format tool input)
+    # ToolQueryRefiner contracts (used by refiner_llm to format tool input)
     @property
     def refiner_instructions(self) -> str:
         return "Output only a valid arithmetic expression using digits and operators + - * / // % ** ( ) ."
@@ -294,7 +294,7 @@ class CalculatorTool(AgentTool):
         """
         Execute the tool and return an Evidence object.
 
-        Evidence is the common format your agent uses to:
+        Evidence is the common format agent uses to:
         - build an observation (summariser_llm)
         - store extracted facts
         - optionally assess confidence
@@ -412,7 +412,6 @@ def main() -> None:
     prompts = create_prompt_registry()
 
     # Minimal tool set (ReActAgent requires at least one tool).
-    # In your full project you can add: web_search, wikipedia, vector_search, etc.
     tools: Dict[str, object] = {"calculator": CalculatorTool()}
 
     # Create LLM instances for each role.
@@ -594,7 +593,7 @@ from __future__ import annotations
 
 """
 
-This file demonstrates the FULL flow in one place:
+This code does:
 1) Define a new Action (metadata the planner LLM sees).
 2) Define a new ActionHandler (runtime logic).
 3) Register the action in step_actions.
@@ -646,7 +645,7 @@ from my_react_agent.agent_memory.data_structures import Evidence, Step, StepResu
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# 1) LLM adapter (Ollama -> your LLMBase)
+# 1) LLM adapter (Ollama ->  LLMBase)
 class OllamaGemmaLLM(LLMBase):
     def __init__(self, model: str = "gemma3:4b", temperature: float = 0.1):
         self.model = model
@@ -765,7 +764,7 @@ class CalculatorTool(AgentTool):
 class GreetingAction(Action):
     """
     This is the "catalogue entry" the planner sees.
-    Your DECIDE_ACTION_FOR_STEP prompt will list this action with:
+    DECIDE_ACTION_FOR_STEP prompt will list this action with:
     - name
     - when_to_pick
     - instructions
@@ -827,7 +826,7 @@ class GreetingHandler(ActionHandler):
         greeting_text = ""
         if _GREETING_RE.search(user_text):
             greeting_text = "Hello! 👋"
-            # This is the easiest way to make your final synthesis "see" the greeting.
+            # This is the easiest way to make final synthesis "see" the greeting.
             ctx.agent._context_snippets.append(f"GREETING: {greeting_text}")
 
         observation = greeting_text or "No greeting detected."
@@ -1003,14 +1002,10 @@ This section shows how to add a new tool: a **tiny calculator** that reads an im
 from __future__ import annotations
 
 """
-
-Goal:
-- Show users the *minimum* they need to add a new tool to my_react_agent.
-
-What this demonstrates:
+What this does:
 1) Define a Tool class implementing AgentTool
 2) Register it in `tools = {...}`
-3) Run ReActAgent so the planner can pick USE_TOOL and call your tool
+3) Run ReActAgent so the planner can pick USE_TOOL and call tool
 
 Prereqs:
 - Ollama installed + running
@@ -1076,15 +1071,11 @@ class OllamaGemmaLLM(LLMBase):
         return response["response"]
 
 
-# 2) The Custom Tool (MINIMAL)
+# 2) The Custom Tool 
 class TinyCalculatorTool(AgentTool):
     """
-    A deliberately tiny example tool.
-
-    IMPORTANT:
-    - execute() is intentionally *minimal* (1–2 lines).
     - This uses eval() for demo simplicity — do NOT use eval in production.
-      For production, copy your Safe AST calculator from QuickStart instead.
+      For production, copy Safe AST calculator from QuickStart instead.
     """
 
     @property
@@ -1169,7 +1160,7 @@ def main() -> None:
 
     prompts = create_prompt_registry()
 
-    # THIS IS THE ENTIRE "REGISTER YOUR TOOL" STEP:
+    # THIS IS THE ENTIRE "REGISTER TOOL" STEP:
     tools: Dict[str, object] = {
         "tiny_calculator": TinyCalculatorTool(),
         # add more tools here later from eva
@@ -1241,13 +1232,13 @@ if __name__ == "__main__":
     main()
 ```
 
-#### How the agent decides to call your tool
+#### How the agent decides to call the tool
 - The planner LLM sees each tool’s:
 1. name
 2. description
 - When it chooses USE_TOOL, it outputs a tool_name and the refiner produces tool_input.
 
-- To make your tool easier to select:
+- To make a tool easier to select:
 1. Use a very specific description
 2. Provide strict refiner_instructions and refiner_input_regex
 3. Keep the input format simple (path:... question:...)
@@ -1277,120 +1268,193 @@ So, to add an assessor you must:
 
 ---
 
-#### Step 1 — Add a new PromptId
-
-Add a new ID to `my_react_agent/agent_prompts/prompts_ids.py`:
-
-```python
-class PromptId(str, Enum):
-
-    # Confidence assessor (existing)
-    CONF_ENTITY_ALIGNMENT = "confidence_entity_alignment"
-    CONF_ANSWER_QUALITY = "confidence_answer_quality"
-    CONF_ANSWER_REALISM = "confidence_answer_realism"
-
-    # Add this:
-    CONF_RELEVANCE = "confidence_relevance"
-```
-
-#### Step 2 - Add the default prompt template
-- Add a default prompt template to my_react_agent/agent_prompts/defaults_prompts.py under DEFAULT_PROMPTS.
-- IMPORTANT: your PromptTemplate.required_vars must match what your assessor passes to _render_prompt().
-
-```python
-from .prompts_ids import PromptId
-from .prompt_template import PromptTemplate
-
-DEFAULT_PROMPTS: dict[PromptId, PromptTemplate] = {
-    # ... existing ...
-
-    PromptId.CONF_RELEVANCE: PromptTemplate(
-        text=(
-            "You are an evaluator for a QA system.\n\n"
-            "Task: Score how RELEVANT the ANSWER is to the QUESTION.\n"
-            "Relevance means: it directly addresses the asked topic and does not drift to another entity or subject.\n\n"
-            "Scoring:\n"
-            "- 1.0 = clearly relevant and directly addresses the question.\n"
-            "- 0.5 = partially relevant; some content matches but key parts drift or are generic.\n"
-            "- 0.0 = irrelevant / wrong subject / does not address the question.\n\n"
-            "Output rules (CRITICAL):\n"
-            "- Output MUST be a SINGLE JSON object and NOTHING else.\n"
-            "- Keys MUST be exactly: score, reason.\n"
-            "- score MUST be one of: 0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0\n"
-            "- reason MUST be <= 20 words.\n"
-            "- Do NOT include any extra keys.\n\n"
-            "Schema example: {schema_example}\n\n"
-            "{knowledge_cutoff_block}{result_timestamp_block}"
-            "QUESTION:\n{question}\n\n"
-            "ANSWER:\n{answer}\n\n"
-            "JSON:"
-        ),
-        required_vars={
-            "schema_example",
-            "knowledge_cutoff_block",
-            "result_timestamp_block",
-            "question",
-            "answer",
-        },
-        description="Assess relevance of an answer to the question",
-        version="1",
-    ),
-}
-```
-
-#### Step 3 — Implement RelevanceAssessor
--Create: my_react_agent/confidence_assessment/relevance_assessor.py
-
 ```python
 from __future__ import annotations
 
+"""
+What this file does:
+1) Define a new prompt_id string (we use a string constant for the demo).
+2) Define a PromptTemplate for that id.
+3) Implement RelevanceAssessor(ParameterAssessor) using that prompt.
+4) Build ReActAgent with parameter_assessors=[RelevanceAssessor(...)].
+5) Run and see confidence gating include assessor.
+
+Run:
+    python main_custom_assessor_demo.py
+
+Try:
+    Ask something that tempts the model to drift:
+      "Tell me about Apple, but focus only on iPhones."
+      "What's the capital of Germany? (Answer ONLY with the city.)"
+"""
+
+import importlib
 import json
 import logging
-from typing import Optional
+import re
+import sys
+from datetime import datetime
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+from typing import Dict, List, Optional, Any
 
-from ..llm_adapters.llm_base import LLMBase
-from ..agent_prompts.defaults_prompts import DEFAULT_PROMPTS
-from ..agent_prompts.prompt_template import PromptTemplate
-from ..agent_prompts.prompts_ids import PromptId
-from ..agent_prompts.prompt_registry import PromptRegistry
+import ollama
 
-from .json_utils import _coerce_score_0_1, _extract_json_object, _pick_reason, _round2
-from .models import ParameterRating
-from .parameter_assessor import ParameterAssessor
+from my_react_agent.llm_adapters.llm_base import LLMBase
+
+from my_react_agent.agent_prompts.prompt_registry import PromptRegistry
+from my_react_agent.agent_prompts.prompt_template import PromptTemplate
+from my_react_agent.agent_prompts.defaults_prompts import DEFAULT_PROMPTS
+
+from my_react_agent.agent_core.agent_actions import (
+    AnswerByItselfAction,
+    ClarifyAction,
+    UseToolAction,
+    StopAction,
+)
+from my_react_agent.agent_core.agent_actions.need_context_action import NeedContextAction
+
+from my_react_agent.agent_heart.react_agent import ReActAgent, ParameterAssessorFactory
+from my_react_agent.agent_memory.llm_entity_extractor import LLMEntityExtractor
+
+from my_react_agent.tool_management.tools.agent_tool import AgentTool
+from my_react_agent.agent_memory.data_structures import Evidence
+
+from my_react_agent.confidence_assessment.parameter_assessor import ParameterAssessor
+from my_react_agent.confidence_assessment.models import ParameterRating
+
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+
+# 1) LLM adapter (Ollama -> LLMBase)
+class OllamaGemmaLLM(LLMBase):
+    def __init__(self, model: str = "gemma3:4b", temperature: float = 0.1):
+        self.model = model
+        self.temperature = temperature
+
+    def generate(self, prompt: str, **kwargs) -> str:
+        response = ollama.generate(
+            model=self.model,
+            prompt=prompt,
+            options={
+                "temperature": self.temperature,
+                "num_ctx": kwargs.get("num_ctx", 2048),
+                "stop": kwargs.get("stop", ["<|endoftext|>"]),
+            },
+        )
+        return response["response"]
+
+
+# 2) Minimal tool (agent requires at least one tool)
+class EchoTool(AgentTool):
+    @property
+    def name(self) -> str:
+        return "echo"
+
+    @property
+    def description(self) -> str:
+        return "Echoes back the input text (demo tool)."
+
+    def execute(self, input: str) -> Evidence:
+        return Evidence(
+            tool=self.name,
+            content=f"ECHO: {input}",
+            url=None,
+            extracted={"echo": input},
+            as_of=datetime.utcnow(),
+            confidence=0.9,
+        )
+
+
+# 3) Custom assessor prompt_id + default PromptTemplate (no core edits)
+# In core, you'd add PromptId.CONF_RELEVANCE. For a one-file demo we just use a string.
+CONF_RELEVANCE_PROMPT_ID = "confidence_relevance"
+
+CONF_RELEVANCE_TEMPLATE = PromptTemplate(
+    text=(
+        "You are an evaluator for a QA system.\n\n"
+        "Task: Score how RELEVANT the ANSWER is to the QUESTION.\n"
+        "Relevance means: it directly addresses the asked topic and does not drift.\n\n"
+        "Scoring:\n"
+        "- 1.0 = clearly relevant and directly addresses the question.\n"
+        "- 0.5 = partially relevant; some matches but some drift.\n"
+        "- 0.0 = irrelevant / wrong subject / does not address the question.\n\n"
+        "Output rules (CRITICAL):\n"
+        "- Output MUST be a SINGLE JSON object and NOTHING else.\n"
+        "- Keys MUST be exactly: score, reason.\n"
+        "- score MUST be one of: 0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0\n"
+        "- reason MUST be <= 20 words.\n"
+        "- Do NOT include any extra keys.\n\n"
+        "Schema example: {schema_example}\n\n"
+        "{knowledge_cutoff_block}{result_timestamp_block}"
+        "QUESTION:\n{question}\n\n"
+        "ANSWER:\n{answer}\n\n"
+        "JSON:"
+    ),
+    required_vars={
+        "schema_example",
+        "knowledge_cutoff_block",
+        "result_timestamp_block",
+        "question",
+        "answer",
+    },
+    description="Assess relevance of an answer to the question",
+    version="1",
+)
+
+
+# 4) Custom ParameterAssessor: RelevanceAssessor
+_JSON_OBJ_RE = re.compile(r"\{.*\}", flags=re.S)
+
+
+def _extract_json_object(raw: str) -> dict:
+    if not raw:
+        return {}
+    m = _JSON_OBJ_RE.search(raw)
+    if not m:
+        return {}
+    try:
+        return json.loads(m.group(0))
+    except Exception:
+        return {}
+
+
+def _coerce_score(v: Any, fallback: float) -> float:
+    try:
+        f = float(v)
+    except Exception:
+        return fallback
+    # clamp to [0, 1]
+    if f < 0.0:
+        f = 0.0
+    if f > 1.0:
+        f = 1.0
+    # snap to 1 decimal to match prompt contract (optional)
+    return float(f"{f:.1f}")
 
 
 class RelevanceAssessor(ParameterAssessor):
-    def __init__(
-        self,
-        llm: LLMBase,
-        *,
-        prompts: PromptRegistry,
-        default_fallback: float = 0.5,
-        log_parse_failures: bool = True,
-    ):
-        super().__init__(llm, prompts=prompts, default_fallback=default_fallback, log_parse_failures=log_parse_failures)
-        logger.info(
-            "[RelevanceAssessor.__init__] ready prompt_id=%s fallback=%.2f",
-            self.prompt_id,
-            self.default_fallback,
-        )
+    """
+    Minimal assessor:
+    - name: key in ratings dict ("relevance")
+    - prompt_id: a string (in core you'd use PromptId.CONF_RELEVANCE.value)
+    - default_prompt_template(): ships its own prompt so PromptRegistry can register it
+    - assess(): returns ParameterRating(name, score, reason, meta)
+    """
 
     @property
     def name(self) -> str:
-        # This key becomes part of the ratings dict in ConfidenceAssessor
         return "relevance"
 
     @property
     def prompt_id(self) -> str:
-        return PromptId.CONF_RELEVANCE.value
+        return CONF_RELEVANCE_PROMPT_ID
 
     def default_prompt_template(self) -> PromptTemplate:
-        tpl = DEFAULT_PROMPTS.get(PromptId.CONF_RELEVANCE) or DEFAULT_PROMPTS.get(self.prompt_id)
-        if tpl is None:
-            raise KeyError(f"DEFAULT_PROMPTS missing template for {PromptId.CONF_RELEVANCE!r} / {self.prompt_id!r}")
-        return tpl
+        # This is what ParameterAssessor.__init__ will register into prompts if missing.
+        return CONF_RELEVANCE_TEMPLATE
 
     def assess(
         self,
@@ -1405,63 +1469,162 @@ class RelevanceAssessor(ParameterAssessor):
 
         prompt = self._render_prompt(
             schema_example=json.dumps(schema),
-            knowledge_cutoff_block=knowledge_cutoff or "",
-            result_timestamp_block=result_timestamp or "",
+            knowledge_cutoff_block=(knowledge_cutoff or ""),
+            result_timestamp_block=(result_timestamp or ""),
             question=query_text,
             answer=answer_text,
         )
 
-        score = self.default_fallback
-        reason = "fallback"
-        raw = ""
+        raw = (self.llm.generate(prompt) or "").strip()
+        obj = _extract_json_object(raw)
 
-        try:
-            raw = (self.llm.generate(prompt) or "").strip()
-            obj = _extract_json_object(raw) or {}
-
-            if not obj and self.log_parse_failures:
-                logger.warning("[RelevanceAssessor] JSON parse failed raw=%r", raw[:600])
-
-            score = _coerce_score_0_1(obj.get("score", score), score)
-            reason = _pick_reason(obj, reason)
-
-        except Exception as e:
-            logger.warning("[RelevanceAssessor] LLM failed error=%r raw=%r", e, raw[:500])
+        score = _coerce_score(obj.get("score", self.default_fallback), self.default_fallback)
+        reason = str(obj.get("reason", "fallback")).strip()[:120] or "fallback"
 
         return ParameterRating(
             name=self.name,
-            score=_round2(score),
+            score=score,
             reason=reason,
             meta={
-                # Optional: if you want to exclude from mean when irrelevant:
+                # optional flags used by ConfidenceAssessor._mean_score()
                 # "exclude_from_mean": False,
             },
         )
+
+# 5) Logging / prompts / optional factory assessors
+def configure_logging(level: int = logging.INFO) -> None:
+    log_path = Path(__file__).resolve().with_name("agent.log")
+    handlers = [
+        logging.StreamHandler(sys.stdout),
+        RotatingFileHandler(str(log_path), maxBytes=2_000_000, backupCount=2, encoding="utf-8"),
+    ]
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        datefmt="%H:%M:%S",
+        handlers=handlers,
+        force=True,
+    )
+
+
+def create_prompt_registry() -> PromptRegistry:
+    # Start from normal defaults
+    prompts = PromptRegistry(_defaults=dict(DEFAULT_PROMPTS))
+
+    # OPTIONAL BUT VERY CLEAR:
+    # We also register the new prompt_id here so users see it explicitly.
+    # (Even if you remove this, ParameterAssessor.__init__ will register it anyway.)
+    prompts.register_default(CONF_RELEVANCE_PROMPT_ID, CONF_RELEVANCE_TEMPLATE)
+
+    return prompts
+
+
+def create_parameter_assessor_factories() -> List[ParameterAssessorFactory]:
+    """
+    Keep existing dynamic imports (optional). This demo focuses on the custom assessor.
+    """
+    factories: List[ParameterAssessorFactory] = []
+    candidates = [
+        ("my_react_agent.confidence_assessment.entity_alignment_assessor", "EntityAlignmentAssessor"),
+        ("my_react_agent.confidence_assessment.answer_quality_assessor", "AnswerQualityAssessor"),
+        ("my_react_agent.confidence_assessment.answer_realism_assessor", "AnswerRealismAssessor"),
+    ]
+    for mod_path, cls_name in candidates:
+        try:
+            mod = importlib.import_module(mod_path)
+            cls = getattr(mod, cls_name)
+            factories.append(lambda llm, prompts, _cls=cls: _cls(llm, prompts=prompts))
+            logger.info("enabled assessor %s.%s", mod_path, cls_name)
+        except Exception as e:
+            logger.info("assessor %s.%s not available (skipping): %r", mod_path, cls_name, e)
+    return factories
+
+
+# 6) Main
+
+def main() -> None:
+    configure_logging(logging.INFO)
+
+    prompts = create_prompt_registry()
+
+    tools: Dict[str, object] = {"echo": EchoTool()}
+
+    llms = {
+        "planner_llm": OllamaGemmaLLM(),
+        "summariser_llm": OllamaGemmaLLM(),
+        "confidence_llm": OllamaGemmaLLM(),
+        "refiner_llm": OllamaGemmaLLM(),
+    }
+
+    entity_extractor = LLMEntityExtractor(llms["summariser_llm"], prompts=prompts)
+
+    step_actions = [
+        NeedContextAction(),
+        AnswerByItselfAction(),
+        ClarifyAction(),
+        UseToolAction(),
+        StopAction(),
+    ]
+
+    low_conf_actions = [
+        NeedContextAction(),
+        UseToolAction(),
+        AnswerByItselfAction(),
+        StopAction(),
+        ClarifyAction(),
+    ]
+
+    # Register assessors:
+    # - existing (optional)
+    existing_factories = create_parameter_assessor_factories()
+
+    # - custom (the point of this demo)
+    custom_assessor = RelevanceAssessor(llms["confidence_llm"], prompts=prompts)
+
+    # Mix factories + instances (ReActAgent.__init__ supports both)
+    parameter_assessors: List[object] = []
+    parameter_assessors.extend(existing_factories)
+    parameter_assessors.append(custom_assessor)
+
+    agent = ReActAgent(
+        planner_llm=llms["planner_llm"],
+        summariser_llm=llms["summariser_llm"],
+        confidence_llm=llms["confidence_llm"],
+        refiner_llm=llms["refiner_llm"],
+        entity_extractor=entity_extractor,
+        tools=tools,
+        prompts=prompts,
+        max_steps=8,
+        step_actions=step_actions,
+        low_conf_actions=low_conf_actions,
+        parameter_assessors=parameter_assessors,  # <-- includes RelevanceAssessor
+    )
+
+    print(
+        "\nCustom Assessor Demo: RelevanceAssessor\n"
+        f"- prompt_id: {CONF_RELEVANCE_PROMPT_ID}\n"
+        "- assessor name: relevance\n\n"
+        "Try:\n"
+        "  What's the capital of Germany? (Answer ONLY with the city.)\n"
+        "  Tell me about Apple, but focus only on iPhones.\n"
+        "Type 'exit' to quit.\n"
+    )
+
+    while True:
+        user_input = input("You: ").strip()
+        if user_input.lower() in {"exit", "quit"}:
+            print("Goodbye!")
+            break
+        if not user_input:
+            continue
+
+        reply = agent.handle(user_input)
+        print(f"{reply}\n")
+
+
+if __name__ == "__main__":
+    main()
 ```
-
--What this returns:
-1. ParameterRating.name: "relevance" (unique key)
-2. ParameterRating.score: float 0–1 (rounded)
-3. ParameterRating.reason: short explanation
-
-#### Step 4 — Register it (Factory method)
-Add these in evaluation/main_to_run_agent.py:
-
-```python
-candidates = [
-    ("my_react_agent.confidence_assessment.entity_alignment_assessor", "EntityAlignmentAssessor"),
-    ("my_react_agent.confidence_assessment.answer_quality_assessor", "AnswerQualityAssessor"),
-    ("my_react_agent.confidence_assessment.answer_realism_assessor", "AnswerRealismAssessor"),
-    # Add this:
-    ("my_react_agent.confidence_assessment.relevance_assessor", "RelevanceAssessor"),
-]
-```
-
-- Because factory pattern already does:
-```python
-factories.append(lambda llm, prompts, _cls=cls: _cls(llm, prompts=prompts))
-```
-that is all what we need.
 
 ## Adding a Custom LLM Adapter (New `LLMBase` Implementation)
 
