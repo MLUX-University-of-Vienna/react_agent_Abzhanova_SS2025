@@ -593,11 +593,6 @@ if __name__ == "__main__":
 from __future__ import annotations
 
 """
-One-file demo: add and use a Custom Action (GreetingAction) in main
-
-Goal:
-- If the user starts with a greeting ("hi", "hello", "good morning", ...),
-  the agent replies with a greeting in the final answer.
 
 This file demonstrates the FULL flow in one place:
 1) Define a new Action (metadata the planner LLM sees).
@@ -993,7 +988,7 @@ if __name__ == "__main__":
     main()
 ```
 
-## Adding a Custom Tool (Example: `PictureAnalyserTool`)
+## Adding a Custom Tool
 
 In `my-react-agent`, a **tool** is any component that implements the `AgentTool` interface:
 
@@ -1002,221 +997,248 @@ In `my-react-agent`, a **tool** is any component that implements the `AgentTool`
 
 Tools are executed through a single boundary (`ToolExecutor`) and are typically triggered by the `USE_TOOL` action (via `UseToolAction`).
 
-This section shows how to add a new tool: a **picture analyser** that reads an image from disk and returns structured evidence.
-
----
-
-#### Step 1 - Create the tool class
-
-Create: `evaluation/tools/picture_analyser_tool.py`
+This section shows how to add a new tool: a **tiny calculator** that reads an image from disk and returns structured evidence.
 
 ```python
 from __future__ import annotations
 
-import os
-import re
+"""
+
+Goal:
+- Show users the *minimum* they need to add a new tool to my_react_agent.
+
+What this demonstrates:
+1) Define a Tool class implementing AgentTool
+2) Register it in `tools = {...}`
+3) Run ReActAgent so the planner can pick USE_TOOL and call your tool
+
+Prereqs:
+- Ollama installed + running
+- Pull model:  ollama pull gemma3:4b
+
+Run:
+    python main_custom_tool_demo.py
+
+Try:
+    "Compute 2+2"
+    "What is (23*7) - 5?"
+    "Use the calculator to do 2^10"
+"""
+
+import importlib
+import logging
+import sys
 from datetime import datetime
-from typing import Optional
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+from typing import Dict, List, Optional
 
-from my_react_agent.agent_memory.data_structures import Evidence
+import ollama
+
+from my_react_agent.llm_adapters.llm_base import LLMBase
+from my_react_agent.agent_prompts.prompt_registry import PromptRegistry
+from my_react_agent.agent_prompts.defaults_prompts import DEFAULT_PROMPTS
+
+from my_react_agent.agent_core.agent_actions import (
+    AnswerByItselfAction,
+    ClarifyAction,
+    UseToolAction,
+    StopAction,
+)
+from my_react_agent.agent_core.agent_actions.need_context_action import NeedContextAction
+
+from my_react_agent.agent_heart.react_agent import ReActAgent, ParameterAssessorFactory
+from my_react_agent.agent_memory.llm_entity_extractor import LLMEntityExtractor
+
 from my_react_agent.tool_management.tools.agent_tool import AgentTool
-
-try:
-    from PIL import Image
-except Exception:
-    Image = None
+from my_react_agent.agent_memory.data_structures import Evidence
 
 
-class PictureAnalyserTool(AgentTool):
-    _PATH_RE = re.compile(r"(?:^|\s)path:(?P<path>\S+)", flags=re.I)
-    _QUESTION_RE = re.compile(r"(?:^|\s)question:(?P<q>.+)$", flags=re.I)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# 1) Minimal LLM adapter (Ollama -> LLMBase)
+class OllamaGemmaLLM(LLMBase):
+    def __init__(self, model: str = "gemma3:4b", temperature: float = 0.1):
+        self.model = model
+        self.temperature = temperature
+
+    def generate(self, prompt: str, **kwargs) -> str:
+        response = ollama.generate(
+            model=self.model,
+            prompt=prompt,
+            options={
+                "temperature": self.temperature,
+                "num_ctx": kwargs.get("num_ctx", 2048),
+                "stop": kwargs.get("stop", ["<|endoftext|>"]),
+            },
+        )
+        return response["response"]
+
+
+# 2) The Custom Tool (MINIMAL)
+class TinyCalculatorTool(AgentTool):
+    """
+    A deliberately tiny example tool.
+
+    IMPORTANT:
+    - execute() is intentionally *minimal* (1–2 lines).
+    - This uses eval() for demo simplicity — do NOT use eval in production.
+      For production, copy your Safe AST calculator from QuickStart instead.
+    """
 
     @property
     def name(self) -> str:
-        return "picture_analyser"
+        # This is the string the planner will put into decision.tool_name
+        return "tiny_calculator"
 
     @property
     def description(self) -> str:
-        return (
-            "Analyse an image from a local file path and return basic properties "
-            "(size, format, mode) and simple heuristics. "
-            "Input should include path:<file> and optionally question:<...>."
-        )
+        # The planner sees this and decides whether to pick USE_TOOL + this tool.
+        return "Evaluates a simple math expression like 2+2 or (3*7)-1. Input should be just the expression."
 
+    # ToolQueryRefiner hints (optional but helps the planner/refiner a lot)
     @property
     def refiner_instructions(self) -> str:
-        return (
-            "Return ONE line in the format:\n"
-            "path:<file_path> question:<what to analyse>\n"
-            "Rules:\n"
-            "- Must include path:\n"
-            "- Use the exact file path from the user message if present\n"
-            "- Do NOT output JSON\n"
-            "- Keep it under 200 characters if possible\n"
-            "Examples:\n"
-            "path:./img/cat.jpg question:Describe what you see\n"
-            "path:/tmp/photo.png question:Read any visible text"
-        )
+        return "Return ONLY the math expression. No words. Examples: 2+2 ; (23*7)-5 ; 2**10"
 
     @property
     def refiner_input_format(self) -> str:
-        return "path:<file_path> question:<what to analyse>"
+        return "<math expression>"
 
     @property
     def refiner_input_regex(self) -> Optional[str]:
-        # Simple validation: must contain "path:" and some non-space path.
-        return r"^.*\bpath:\S+.*$"
+        # Keep it simple: numbers, whitespace, and common operators/parentheses.
+        return r"^[0-9\.\s\+\-\*\/\(\)\%]+$"
 
-    @property
-    def refiner_forbidden(self) -> str:
-        return "Forbidden: JSON, newlines, URLs instead of file paths."
-
-    @property
-    def refiner_max_chars(self) -> int:
-        return 300
-
-    # --- Core execution ---
     def execute(self, input: str) -> Evidence:
-        if Image is None:
-            return Evidence(
-                tool=self.name,
-                content="PictureAnalyserTool requires Pillow (PIL). Install: pip install pillow",
-                url=None,
-                extracted={"error": True, "reason": "pillow_missing"},
-                as_of=datetime.utcnow(),
-                confidence=0.1,
-            )
+        # 1–2 line demo logic (again: eval is for demo only)
+        result = eval((input or "").replace("^", "**"), {"__builtins__": {}})  # noqa: S307
 
-        raw = (input or "").strip()
-        path = self._extract_path(raw)
-        question = self._extract_question(raw)
+        return Evidence(
+            tool=self.name,
+            content=f"{input} = {result}",
+            url=None,
+            extracted={"expression": input, "result": result},
+            as_of=datetime.utcnow(),
+            confidence=0.9,
+        )
 
-        if not path:
-            return Evidence(
-                tool=self.name,
-                content="Missing image path. Provide: path:<file_path> question:<...>",
-                url=None,
-                extracted={"error": True, "reason": "missing_path", "tool_input": raw},
-                as_of=datetime.utcnow(),
-                confidence=0.1,
-            )
 
-        if not os.path.exists(path):
-            return Evidence(
-                tool=self.name,
-                content=f"Image file not found: {path}",
-                url=None,
-                extracted={"error": True, "reason": "file_not_found", "path": path},
-                as_of=datetime.utcnow(),
-                confidence=0.1,
-            )
+# 3) Helpers (logging, prompts, assessors)
+def configure_logging(level: int = logging.INFO) -> None:
+    log_path = Path(__file__).resolve().with_name("agent.log")
+    handlers = [
+        logging.StreamHandler(sys.stdout),
+        RotatingFileHandler(str(log_path), maxBytes=2_000_000, backupCount=2, encoding="utf-8"),
+    ]
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        datefmt="%H:%M:%S",
+        handlers=handlers,
+        force=True,
+    )
 
+
+def create_prompt_registry() -> PromptRegistry:
+    return PromptRegistry(_defaults=dict(DEFAULT_PROMPTS))
+
+
+def create_parameter_assessor_factories() -> List[ParameterAssessorFactory]:
+    factories: List[ParameterAssessorFactory] = []
+    candidates = [
+        ("my_react_agent.confidence_assessment.entity_alignment_assessor", "EntityAlignmentAssessor"),
+        ("my_react_agent.confidence_assessment.answer_quality_assessor", "AnswerQualityAssessor"),
+        ("my_react_agent.confidence_assessment.answer_realism_assessor", "AnswerRealismAssessor"),
+    ]
+    for mod_path, cls_name in candidates:
         try:
-            with Image.open(path) as img:
-                w, h = img.size
-                mode = img.mode
-                fmt = (img.format or "").upper()
-
-                # very lightweight "analysis"
-                notes = []
-                if w >= 2000 or h >= 2000:
-                    notes.append("high_resolution")
-                if mode in ("RGBA", "LA"):
-                    notes.append("has_alpha")
-
-                # Optional: compute a tiny heuristic (average brightness) without heavy ML
-                avg_brightness = None
-                try:
-                    gray = img.convert("L")
-                    small = gray.resize((64, 64))
-                    px = list(small.getdata())
-                    avg_brightness = sum(px) / max(1, len(px))  # 0..255
-                except Exception:
-                    pass
-
-            content_lines = [
-                f"PATH: {path}",
-                f"FORMAT: {fmt or '(unknown)'}",
-                f"SIZE: {w}x{h}",
-                f"MODE: {mode}",
-            ]
-            if question:
-                content_lines.append(f"QUESTION: {question}")
-            if notes:
-                content_lines.append(f"NOTES: {', '.join(notes)}")
-            if avg_brightness is not None:
-                content_lines.append(f"AVG_BRIGHTNESS: {avg_brightness:.1f}/255")
-
-            return Evidence(
-                tool=self.name,
-                content="\n".join(content_lines),
-                url=None,
-                extracted={
-                    "path": path,
-                    "format": fmt,
-                    "width": w,
-                    "height": h,
-                    "mode": mode,
-                    "notes": notes,
-                    "avg_brightness": avg_brightness,
-                    "question": question,
-                },
-                as_of=datetime.utcnow(),
-                confidence=0.8,
-            )
-
+            mod = importlib.import_module(mod_path)
+            cls = getattr(mod, cls_name)
+            factories.append(lambda llm, prompts, _cls=cls: _cls(llm, prompts=prompts))
+            logger.info("enabled assessor %s.%s", mod_path, cls_name)
         except Exception as e:
-            return Evidence(
-                tool=self.name,
-                content=f"Failed to analyse image: {e!r}",
-                url=None,
-                extracted={"error": True, "reason": "exception", "path": path},
-                as_of=datetime.utcnow(),
-                confidence=0.1,
-            )
-
-    def _extract_path(self, s: str) -> str:
-        m = self._PATH_RE.search(s or "")
-        if not m:
-            return ""
-        return (m.group("path") or "").strip().strip('"').strip("'")
-
-    def _extract_question(self, s: str) -> str:
-        m = self._QUESTION_RE.search(s or "")
-        if not m:
-            return ""
-        return (m.group("q") or "").strip()
-```
-
- What this tool does: 
-- Takes a path:<file> input
-- Loads the image using Pillow
-- Returns an Evidence object with structured fields in extracted
-
-#### Step 2 - Create the tool class
-in evaluation/main_to_run_agent.py: 
-
-```python
-def _init_picture_analyser_tool() -> Optional[object]:
-    try:
-        from .tools.picture_analyser_tool import PictureAnalyserTool
-        return PictureAnalyserTool()
-    except Exception as e:
-        logger.exception("[tools] picture_analyser failed to init: %r", e)
-        return None
+            logger.info("assessor %s.%s not available (skipping): %r", mod_path, cls_name, e)
+    return factories
 
 
-def create_tools() -> Dict[str, object]:
-    tools: Dict[str, object] = {}
+# 4) Main: register tool -> build agent -> chat
+def main() -> None:
+    configure_logging(logging.INFO)
 
-    # ... existing tools ...
+    prompts = create_prompt_registry()
 
-    pa = _init_picture_analyser_tool()
-    if pa is not None:
-        tools["picture_analyser"] = pa
+    # THIS IS THE ENTIRE "REGISTER YOUR TOOL" STEP:
+    tools: Dict[str, object] = {
+        "tiny_calculator": TinyCalculatorTool(),
+        # add more tools here later from eva
+    }
 
-    logger.info("[create_tools] Tools initialised count=%d keys=%s", len(tools), list(tools.keys()))
-    return tools
+    llms = {
+        "planner_llm": OllamaGemmaLLM(),
+        "summariser_llm": OllamaGemmaLLM(),
+        "confidence_llm": OllamaGemmaLLM(),
+        "refiner_llm": OllamaGemmaLLM(),
+    }
+
+    entity_extractor = LLMEntityExtractor(llms["summariser_llm"], prompts=prompts)
+
+    step_actions = [
+        NeedContextAction(),
+        AnswerByItselfAction(),
+        ClarifyAction(),
+        UseToolAction(),  # <-- this is what triggers tool usage
+        StopAction(),
+    ]
+
+    low_conf_actions = [
+        NeedContextAction(),
+        UseToolAction(),
+        AnswerByItselfAction(),
+        StopAction(),
+        ClarifyAction(),
+    ]
+
+    parameter_assessors = create_parameter_assessor_factories()
+
+    agent = ReActAgent(
+        planner_llm=llms["planner_llm"],
+        summariser_llm=llms["summariser_llm"],
+        confidence_llm=llms["confidence_llm"],
+        refiner_llm=llms["refiner_llm"],
+        entity_extractor=entity_extractor,
+        tools=tools,
+        prompts=prompts,
+        max_steps=8,
+        step_actions=step_actions,
+        low_conf_actions=low_conf_actions,
+        parameter_assessors=parameter_assessors,
+    )
+
+    print(
+        "\nCustom Tool Demo: tiny_calculator\n"
+        "Try:\n"
+        "  Compute 2+2\n"
+        "  What is (23*7) - 5?\n"
+        "  Use the calculator to do 2^10\n"
+        "Type 'exit' to quit.\n"
+    )
+
+    while True:
+        user_input = input("You: ").strip()
+        if user_input.lower() in {"exit", "quit"}:
+            print("Goodbye!")
+            break
+        if not user_input:
+            continue
+
+        reply = agent.handle(user_input)
+        print(f"{reply}\n")
+
+
+if __name__ == "__main__":
+    main()
 ```
 
 #### How the agent decides to call your tool
