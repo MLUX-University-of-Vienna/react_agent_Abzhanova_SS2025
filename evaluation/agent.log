@@ -569,3 +569,51 @@ I chose to use the web search tool because the question asks for real-time data 
 12:21:29 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory linked to Query id=qry_99cdc888b6114c3c9cdf92a4ca42010d
 12:21:29 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory appended turn query_id=qry_99cdc888b6114c3c9cdf92a4ca42010d q_len=104 a_len=184
 12:21:29 INFO [agent_heart.react_agent] [ReActAgent.handle] done transcript_lines=7 executed_steps=1
+12:41:59 INFO [__main__] enabled assessor my_react_agent.confidence_assessment.entity_alignment_assessor.EntityAlignmentAssessor
+12:41:59 INFO [__main__] enabled assessor my_react_agent.confidence_assessment.answer_quality_assessor.AnswerQualityAssessor
+12:41:59 INFO [__main__] enabled assessor my_react_agent.confidence_assessment.answer_realism_assessor.AnswerRealismAssessor
+12:41:59 INFO [agent_heart.react_agent] [ReActAgent.__init__] PromptRegistry ready defaults=15 overrides=0
+12:41:59 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory initialised max_turns=5
+12:41:59 INFO [my_react_agent.agent_memory.query_memory] QueryMemory initialised (no active query)
+12:41:59 INFO [my_react_agent.confidence_assessment.entity_alignment_assessor] [EntityAlignmentAssessor.__init__] ready prompt_id=confidence_entity_alignment fallback=0.50
+12:41:59 INFO [agent_heart.react_agent] [ReActAgent.__init__] Built ParameterAssessor from factory: EntityAlignmentAssessor
+12:41:59 INFO [my_react_agent.confidence_assessment.answer_quality_assessor] [AnswerQualityAssessor.__init__] ready prompt_id=confidence_answer_quality fallback=0.50
+12:41:59 INFO [agent_heart.react_agent] [ReActAgent.__init__] Built ParameterAssessor from factory: AnswerQualityAssessor
+12:41:59 INFO [my_react_agent.confidence_assessment.answer_realism_assessor] [AnswerRealismAssessor.__init__] ready prompt_id=confidence_answer_realism fallback=0.50
+12:41:59 INFO [agent_heart.react_agent] [ReActAgent.__init__] Built ParameterAssessor from factory: AnswerRealismAssessor
+12:41:59 INFO [my_react_agent.confidence_assessment.confidence_assessor] [ConfidenceAssessor.__init__] fallback=0.50 max_decimals=2 mismatch_penalty=0.98 include_tool_result_in_quality=True tool_result_max_chars=12000 log_parse_failures=True assessors=3
+12:41:59 INFO [agent_heart.react_agent] [ReActAgent.__init__] ConfidenceAssessor enabled assessors=3
+12:41:59 INFO [agent_heart.react_agent] [ReActAgent.__init__] Ready tools=1 max_steps=8 step_actions=6 low_conf_actions=6
+12:42:11 INFO [agent_heart.react_agent] [ReActAgent.handle] start question_len=18
+12:42:11 INFO [my_react_agent.agent_memory.query_memory] New query session started id=qry_46dbe4c3095149d79664a4b43beb16dc text_length=18
+12:42:11 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory synced query_id=qry_46dbe4c3095149d79664a4b43beb16dc entities=0 (new=0) preview=[]
+12:42:11 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory linked to Query id=qry_46dbe4c3095149d79664a4b43beb16dc
+12:42:11 INFO [agent_heart.react_agent] [ReActAgent._should_separate_question] Prompt length=708
+12:42:14 INFO [httpx] HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+12:42:14 INFO [agent_heart.react_agent] [ReActAgent._should_separate_question] RAW: ```json
+{"separate": false, "reason": "Simple factual question"}
+```
+12:42:14 INFO [agent_heart.react_agent] [ReActAgent._should_separate_question] separate=False reason=Simple factual question
+12:42:14 INFO [agent_heart.react_agent] [ReActAgent.handle] separate_question=False
+12:42:14 INFO [agent_heart.react_agent] [ReActAgent.handle] using single-step plan
+12:42:14 INFO [agent_heart.react_agent] [ReActAgent.handle] executing steps=1 max_steps=8
+12:42:14 INFO [agent_heart.react_agent] [ReActAgent.handle] Step=1/1 start idx=1 deps=[]
+12:42:17 INFO [httpx] HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+12:42:17 INFO [agent_heart.react_agent] [ReActAgent._decide_action_for_step] Step=1 RAW: ```json
+{"think":"Greeting the user","action":"GREETING","tool_name":"","tool_input":"","message":"Hello there! What would you like to know about the sun?"}
+```
+12:42:17 INFO [agent_heart.react_agent] [ReActAgent._decide_action_for_step] Plan instruction=Hi! What is a sun?
+12:42:17 INFO [agent_heart.react_agent] [ReActAgent._decide_action_for_step] Step=1 Parsed action=GREETING tool= tool_input_len=18
+12:42:17 INFO [agent_heart.react_agent] [ReActAgent.handle] Step=1 initial decision action=GREETING tool=
+12:42:18 INFO [httpx] HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+12:42:18 INFO [agent_heart.react_agent] [ReActAgent._update_previous_step_results] Stored result for step 1
+12:42:18 INFO [agent_heart.react_agent] [EntityExtract] step=1 raw_candidates=[]
+12:42:18 INFO [agent_heart.react_agent] [EntityExtract] step=1 uniq=[]
+12:42:18 INFO [agent_heart.react_agent] [EntityExtract] step=1 added=[] existing=[] total_entities=0
+12:42:18 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory synced query_id=qry_46dbe4c3095149d79664a4b43beb16dc entities=0 (new=0) preview=[]
+12:42:18 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory linked to Query id=qry_46dbe4c3095149d79664a4b43beb16dc
+12:42:19 INFO [httpx] HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+12:42:19 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory synced query_id=qry_46dbe4c3095149d79664a4b43beb16dc entities=0 (new=0) preview=[]
+12:42:19 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory linked to Query id=qry_46dbe4c3095149d79664a4b43beb16dc
+12:42:19 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory appended turn query_id=qry_46dbe4c3095149d79664a4b43beb16dc q_len=18 a_len=93
+12:42:19 INFO [agent_heart.react_agent] [ReActAgent.handle] done transcript_lines=5 executed_steps=1

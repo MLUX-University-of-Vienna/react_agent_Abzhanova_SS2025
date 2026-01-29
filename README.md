@@ -97,7 +97,6 @@ from __future__ import annotations
 
 """
 QuickStart entrypoint for my_react_agent
-=======================================
 
 What this script does (high level):
 1) Configures logging (console + rotating log file)
@@ -589,49 +588,214 @@ if __name__ == "__main__":
 
 - Goal: If the user starts with a greeting (e.g., “hi”, “hello”, “good morning”), the agent should include a greeting back in the final answer.
 
-- In my-react-agent, a custom action has two parts:
-1. Action definition (Action) — metadata the LLM sees in the action catalogue
-2. Action handler (ActionHandler) — runtime code executed when the action is selected
 
-- How actions are selected and executed
-At runtime the agent:
-1. Builds an action catalogue from step_actions (and low_conf_actions during retries).
-2. Lets the planner LLM choose one action name for the current step.
-3. Maps action name → handler in ReActAgent._get_handler_for_action.
-4. Executes the handler and records observation/evidence.
-
-- So, to add a new action you must:
-1. Create a new Action class (e.g., GreetingAction)
-2. Create a new ActionHandler class (e.g., GreetingHandler)
-3. Register the action in step_actions
-4. Add a mapping in _get_handler_for_action
-
-#### Step 1 - Create GreetingAction
 ```python
 from __future__ import annotations
 
+"""
+One-file demo: add and use a Custom Action (GreetingAction) in main
+
+Goal:
+- If the user starts with a greeting ("hi", "hello", "good morning", ...),
+  the agent replies with a greeting in the final answer.
+
+This file demonstrates the FULL flow in one place:
+1) Define a new Action (metadata the planner LLM sees).
+2) Define a new ActionHandler (runtime logic).
+3) Register the action in step_actions.
+4) Register the handler via ReActAgent(action_handlers=...) (no core edits needed).
+5) Run the agent.
+
+Prereqs:
+- Ollama installed + running
+- Model pulled (default below):  ollama pull gemma3:4b
+
+Run:
+    python main_custom_action_demo.py
+"""
+
+import ast
+import importlib
+import logging
+import operator as op
+import re
+import sys
+from datetime import datetime
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
+
+import ollama
+
+from my_react_agent.llm_adapters.llm_base import LLMBase
+from my_react_agent.agent_prompts.prompt_registry import PromptRegistry
+from my_react_agent.agent_prompts.defaults_prompts import DEFAULT_PROMPTS
+
 from my_react_agent.agent_core.agent_actions.action import Action
+from my_react_agent.agent_core.agent_actions import (
+    AnswerByItselfAction,
+    ClarifyAction,
+    UseToolAction,
+    StopAction,
+)
+from my_react_agent.agent_core.agent_actions.need_context_action import NeedContextAction
+
+from my_react_agent.agent_heart.react_agent import ReActAgent, ParameterAssessorFactory
+from my_react_agent.agent_heart.action_handler_base import ActionHandler, empty_tool_call
+from my_react_agent.agent_memory.llm_entity_extractor import LLMEntityExtractor
+
+from my_react_agent.tool_management.tools.agent_tool import AgentTool
+from my_react_agent.agent_memory.data_structures import Evidence, Step, StepResult, StepToolCall, step_set_result
 
 
-class GreetingAction(Action):
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# 1) LLM adapter (Ollama -> your LLMBase)
+class OllamaGemmaLLM(LLMBase):
+    def __init__(self, model: str = "gemma3:4b", temperature: float = 0.1):
+        self.model = model
+        self.temperature = temperature
+
+    def generate(self, prompt: str, **kwargs) -> str:
+        response = ollama.generate(
+            model=self.model,
+            prompt=prompt,
+            options={
+                "temperature": self.temperature,
+                "num_ctx": kwargs.get("num_ctx", 2048),
+                "stop": kwargs.get("stop", ["<|endoftext|>"]),
+            },
+        )
+        return response["response"]
+
+# 2) Minimal Calculator tool (so the agent has at least one tool)
+
+_ALLOWED_BIN_OPS = {
+    ast.Add: op.add,
+    ast.Sub: op.sub,
+    ast.Mult: op.mul,
+    ast.Div: op.truediv,
+    ast.FloorDiv: op.floordiv,
+    ast.Mod: op.mod,
+    ast.Pow: op.pow,
+}
+_ALLOWED_UNARY_OPS = {ast.UAdd: op.pos, ast.USub: op.neg}
+
+
+def _safe_eval(expr: str) -> float:
+    node = ast.parse(expr, mode="eval")
+
+    def _eval(n: ast.AST):
+        if isinstance(n, ast.Expression):
+            return _eval(n.body)
+        if isinstance(n, ast.Constant) and isinstance(n.value, (int, float)):
+            return n.value
+        if isinstance(n, ast.BinOp) and type(n.op) in _ALLOWED_BIN_OPS:
+            return _ALLOWED_BIN_OPS[type(n.op)](_eval(n.left), _eval(n.right))
+        if isinstance(n, ast.UnaryOp) and type(n.op) in _ALLOWED_UNARY_OPS:
+            return _ALLOWED_UNARY_OPS[type(n.op)](_eval(n.operand))
+        raise ValueError(f"Unsupported expression element: {type(n).__name__}")
+
+    return float(_eval(node))
+
+
+def _extract_math_expression(text: str) -> Optional[str]:
+    if not text:
+        return None
+    m = re.search(r"[0-9\.\s\+\-\*\/\(\)\%\^]+", text.strip())
+    if not m:
+        return None
+    expr = m.group(0).strip().replace("^", "**")
+    return expr or None
+
+
+class CalculatorTool(AgentTool):
     @property
     def name(self) -> str:
-        # Must match the handler map key in ReActAgent._get_handler_for_action
+        return "calculator"
+
+    @property
+    def description(self) -> str:
+        return "Safely evaluates basic arithmetic expressions."
+
+    @property
+    def refiner_instructions(self) -> str:
+        return "Output only a valid arithmetic expression using digits and operators + - * / // % ** ( ) ."
+
+    @property
+    def refiner_input_format(self) -> str:
+        return "<arithmetic expression>"
+
+    @property
+    def refiner_input_regex(self) -> Optional[str]:
+        return r"^[0-9\.\s\+\-\*\/\(\)\%\^]+$"
+
+    def execute(self, input: str) -> Evidence:
+        q = (input or "").strip()
+        expr = _extract_math_expression(q)
+        if not expr:
+            return Evidence(
+                tool=self.name,
+                content="Calculator failed: no arithmetic expression found.",
+                url=None,
+                extracted={"error": True, "message": "no_expression", "input": q},
+                as_of=datetime.utcnow(),
+                confidence=0.2,
+            )
+        try:
+            value = _safe_eval(expr)
+            rendered = str(int(value)) if abs(value - round(value)) < 1e-12 else str(value)
+            return Evidence(
+                tool=self.name,
+                content=f"{expr} = {rendered}",
+                url=None,
+                extracted={"expression": expr, "result": value},
+                as_of=datetime.utcnow(),
+                confidence=0.95,
+            )
+        except Exception as e:
+            return Evidence(
+                tool=self.name,
+                content=f"Calculator failed: {e}",
+                url=None,
+                extracted={"error": True, "message": str(e), "expression": expr, "input": q},
+                as_of=datetime.utcnow(),
+                confidence=0.1,
+            )
+
+
+# 3) Custom Action: GreetingAction (what the planner LLM can choose)
+
+class GreetingAction(Action):
+    """
+    This is the "catalogue entry" the planner sees.
+    Your DECIDE_ACTION_FOR_STEP prompt will list this action with:
+    - name
+    - when_to_pick
+    - instructions
+    - examples (optional)
+
+    IMPORTANT:
+    - name must match the handler registration key ("GREETING" below).
+    """
+
+    @property
+    def name(self) -> str:
         return "GREETING"
 
     @property
     def default_when_to_pick(self) -> str:
         return (
-            "Pick when the user message contains a greeting (hi/hello/hey/good morning/etc.) "
-            "and we should greet back in the final answer."
+            "Pick when the user message starts with a greeting (hi/hello/hey/good morning/etc.) "
+            "and we should greet back."
         )
 
     @property
     def default_instructions(self) -> str:
         return (
-            "Detect greeting intent in the user's message. "
-            "If present, prepare a short friendly greeting to include in the final answer. "
-            "Do not answer the main question here; just prepare the greeting."
+            "If the user starts with a greeting, create a short friendly greeting. "
+            "Do NOT answer the main question here; only add greeting context."
         )
 
     @property
@@ -641,39 +805,9 @@ class GreetingAction(Action):
             "User: Hello, can you explain ReAct agents?",
             "User: Good morning — what is the weather in Tokyo?",
         ]
-```
-- Notes:
-1. name must be unique and stable.
-2. The planner LLM uses when_to_pick and instructions to decide whether to select this action.
-
-#### Step 2 - Create GreetingHandler
-- Create: my_react_agent/agent_heart/react_handlers/greeting.py
-- This handler:
-1. detects if the user question contains a greeting,
-2. stores a greeting in the agent context (_context_snippets),
-3. returns a small observation (traceable in transcript).
-
-```python
-from __future__ import annotations
-
-import re
-from datetime import datetime
-from typing import Tuple, TYPE_CHECKING
-
-from my_react_agent.agent_memory.data_structures import (
-    Step,
-    StepResult,
-    StepToolCall,
-    ToolResponse,
-    Evidence,
-    step_set_result,
-)
-from my_react_agent.agent_heart.action_handler_base import ActionHandler, empty_tool_call
-
-if TYPE_CHECKING:
-    from my_react_agent.agent_heart.action_context import ActionHandlerContext
 
 
+# 4) Custom Handler: GreetingHandler (runtime logic when GREETING is selected)
 _GREETING_RE = re.compile(
     r"^\s*(hi|hello|hey|good\s+morning|good\s+afternoon|good\s+evening)\b",
     flags=re.I,
@@ -681,17 +815,24 @@ _GREETING_RE = re.compile(
 
 
 class GreetingHandler(ActionHandler):
+    """
+    Runtime behavior:
+    - Detect greeting from the original user question
+    - Store a context snippet so it shows up in final synthesis
+    - Return a short observation so the transcript shows what happened
+    """
+
     @property
     def action_name(self) -> str:
         return "GREETING"
 
-    def run(self, ctx: "ActionHandlerContext") -> Tuple[StepToolCall, StepResult, Step]:
+    def run(self, ctx) -> Tuple[StepToolCall, StepResult, Step]:
         user_text = (ctx.question or "").strip()
 
         greeting_text = ""
         if _GREETING_RE.search(user_text):
-            greeting_text = "Hello!"
-            # Stored for final synthesis
+            greeting_text = "Hello! 👋"
+            # This is the easiest way to make your final synthesis "see" the greeting.
             ctx.agent._context_snippets.append(f"GREETING: {greeting_text}")
 
         observation = greeting_text or "No greeting detected."
@@ -702,12 +843,12 @@ class GreetingHandler(ActionHandler):
             success=True,
         )
 
-        # Optional: attach evidence for traceability
+        # Optional: attach traceable evidence
         ev = Evidence(
             tool="greeting",
             content=observation,
             url=None,
-            extracted={"greeting": greeting_text or "", "matched": bool(greeting_text)},
+            extracted={"greeting": greeting_text, "matched": bool(greeting_text)},
             as_of=datetime.utcnow(),
             confidence=0.9,
         )
@@ -722,49 +863,134 @@ class GreetingHandler(ActionHandler):
         updated_step = step_set_result(step, step_result)
         return empty_tool_call(tool=""), step_result, updated_step
 
-    def should_assess_result(
-        self,
-        ctx: "ActionHandlerContext",
-        *,
-        step: Step,
-        decision,
-        step_result: StepResult,
-    ) -> bool:
-        # Greeting detection is deterministic; no need to confidence-gate it.
+    def should_assess_result(self, ctx, *, step: Step, decision, step_result: StepResult) -> bool:
+        # This is deterministic; don't waste confidence budget / retries on it.
         return False
-```
 
-#### Step 3 — Wire the handler into ReActAgent
-Update ReActAgent._get_handler_for_action to include the new handler:
 
-```python
-from my_react_agent.agent_heart.react_handlers.greeting import GreetingHandler
+# 5) Setup helpers (logging, prompts, assessors)
 
-def _get_handler_for_action(self, action_name: str) -> ActionHandler:
-    handler_map = {
-        "ANSWER_BY_ITSELF": AnswerByItselfHandler(),
-        "STOP": StopHandler(),
-        "CLARIFY": ClarifyHandler(),
-        "RESOLVE_PRONOUNS_AND_OMITTED ENTITIES": NeedContextHandler(),
-        "USE_TOOL": UseToolHandler(),
-        "GREETING": GreetingHandler(),  
+def configure_logging(level: int = logging.INFO) -> None:
+    log_path = Path(__file__).resolve().with_name("agent.log")
+    handlers = [
+        logging.StreamHandler(sys.stdout),
+        RotatingFileHandler(str(log_path), maxBytes=2_000_000, backupCount=2, encoding="utf-8"),
+    ]
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        datefmt="%H:%M:%S",
+        handlers=handlers,
+        force=True,
+    )
+
+
+def create_prompt_registry() -> PromptRegistry:
+    return PromptRegistry(_defaults=dict(DEFAULT_PROMPTS))
+
+
+def create_parameter_assessor_factories() -> List[ParameterAssessorFactory]:
+    factories: List[ParameterAssessorFactory] = []
+    candidates = [
+        ("my_react_agent.confidence_assessment.entity_alignment_assessor", "EntityAlignmentAssessor"),
+        ("my_react_agent.confidence_assessment.answer_quality_assessor", "AnswerQualityAssessor"),
+        ("my_react_agent.confidence_assessment.answer_realism_assessor", "AnswerRealismAssessor"),
+    ]
+    for mod_path, cls_name in candidates:
+        try:
+            mod = importlib.import_module(mod_path)
+            cls = getattr(mod, cls_name)
+            factories.append(lambda llm, prompts, _cls=cls: _cls(llm, prompts=prompts))
+            logger.info("enabled assessor %s.%s", mod_path, cls_name)
+        except Exception as e:
+            logger.info("assessor %s.%s not available (skipping): %r", mod_path, cls_name, e)
+    return factories
+
+
+# 6) Main
+
+def main() -> None:
+    configure_logging(logging.INFO)
+
+    prompts = create_prompt_registry()
+
+    # Tool set (minimal)
+    tools: Dict[str, object] = {"calculator": CalculatorTool()}
+
+    # One model for all roles (QuickStart style)
+    llms = {
+        "planner_llm": OllamaGemmaLLM(),
+        "summariser_llm": OllamaGemmaLLM(),
+        "confidence_llm": OllamaGemmaLLM(),
+        "refiner_llm": OllamaGemmaLLM(),
     }
-    return handler_map.get(action_name, UseToolHandler())
-```
 
-#### Step 4 — Register the action in step_actions
-When constructing your agent:
-```python
-from my_react_agent.agent_core.agent_actions.greeting_action import GreetingAction
+    entity_extractor = LLMEntityExtractor(llms["summariser_llm"], prompts=prompts)
 
-step_actions = [
-    GreetingAction(),   
-    NeedContextAction(),
-    AnswerByItselfAction(),
-    ClarifyAction(),
-    UseToolAction(),
-    StopAction(),
-]
+    # Register custom action FIRST so the planner sees it early in the catalogue.
+    step_actions = [
+        GreetingAction(),
+        NeedContextAction(),
+        AnswerByItselfAction(),
+        ClarifyAction(),
+        UseToolAction(),
+        StopAction(),
+    ]
+
+    # Low confidence actions can include it too, but it's optional.
+    low_conf_actions = [
+        GreetingAction(),
+        NeedContextAction(),
+        UseToolAction(),
+        AnswerByItselfAction(),
+        StopAction(),
+        ClarifyAction(),
+    ]
+
+    parameter_assessors = create_parameter_assessor_factories()
+
+    # Key part: register handler WITHOUT editing ReActAgent core
+    action_handlers = {
+        "GREETING": GreetingHandler(),
+    }
+
+    agent = ReActAgent(
+        planner_llm=llms["planner_llm"],
+        summariser_llm=llms["summariser_llm"],
+        confidence_llm=llms["confidence_llm"],
+        refiner_llm=llms["refiner_llm"],
+        entity_extractor=entity_extractor,
+        tools=tools,
+        prompts=prompts,
+        max_steps=8,
+        step_actions=step_actions,
+        low_conf_actions=low_conf_actions,
+        parameter_assessors=parameter_assessors,
+        action_handlers=action_handlers,  # <-- this wires GREETING -> GreetingHandler()
+    )
+
+    print(
+        "\nCustom Action Demo: GREETING\n"
+        "Try:\n"
+        "  Hi! What is (23*7) - 5?\n"
+        "  hello compute 2^10\n"
+        "Type 'exit' to quit.\n"
+    )
+
+    while True:
+        user_input = input("You: ").strip()
+        if user_input.lower() in {"exit", "quit"}:
+            print("Goodbye!")
+            break
+        if not user_input:
+            continue
+
+        reply = agent.handle(user_input)
+        print(f"{reply}\n")
+
+
+if __name__ == "__main__":
+    main()
 ```
 
 ## Adding a Custom Tool (Example: `PictureAnalyserTool`)
