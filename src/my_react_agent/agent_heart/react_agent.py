@@ -76,6 +76,7 @@ class ReActAgent(
         step_actions: Optional[List[Action]] = None,
         low_conf_actions: Optional[List[Action]] = None,
         parameter_assessors: Optional[List[ParameterAssessorLike]] = None,
+        action_handlers: Optional[Dict[str, ActionHandler]] = None,
     ):
         if not tools:
             raise ValueError("ReActAgent requires at least one tool")
@@ -117,6 +118,20 @@ class ReActAgent(
         self._current_step_index: Optional[int] = None
         self._current_question: str = ""
         self._context_snippets: List[str] = []
+
+        self._default_action_handlers: Dict[str, ActionHandler] = {
+            "ANSWER_BY_ITSELF": AnswerByItselfHandler(),
+            "STOP": StopHandler(),
+            "CLARIFY": ClarifyHandler(),
+            "RESOLVE_PRONOUNS_AND_OMITTED ENTITIES": NeedContextHandler(),
+            "USE_TOOL": UseToolHandler(),
+        }
+        self._action_handlers: Dict[str, ActionHandler] = dict(self._default_action_handlers)
+        if action_handlers:
+            for k, v in action_handlers.items():
+                if not k or v is None:
+                    continue
+                self._action_handlers[str(k).upper().strip()] = v
 
         built_assessors: List[ParameterAssessor] = []
         for item in (parameter_assessors or []):
@@ -186,6 +201,17 @@ class ReActAgent(
             low_conf,
             len(self.step_actions),
             len(self.low_conf_actions),
+        )
+
+    def register_action_handler(self, action_name: str, handler: ActionHandler) -> None:
+        if not action_name or handler is None:
+            return
+        key = str(action_name).upper().strip()
+        self._action_handlers[key] = handler
+        logger.info(
+            "[ReActAgent.register_action_handler] Registered handler action=%s handler=%s",
+            key,
+            type(handler).__name__,
         )
 
     def register_parameter_assessor(self, assessor: ParameterAssessor) -> None:
@@ -430,14 +456,11 @@ class ReActAgent(
         self._context_snippets = []
 
     def _get_handler_for_action(self, action_name: str) -> ActionHandler:
-        handler_map: Dict[str, ActionHandler] = {
-            "ANSWER_BY_ITSELF": AnswerByItselfHandler(),
-            "STOP": StopHandler(),
-            "CLARIFY": ClarifyHandler(),
-            "RESOLVE_PRONOUNS_AND_OMITTED ENTITIES": NeedContextHandler(),
-            "USE_TOOL": UseToolHandler(),
-        }
-        return handler_map.get(action_name, UseToolHandler())
+        key = (action_name or "").upper().strip()
+        handler = self._action_handlers.get(key)
+        if handler is not None:
+            return handler
+        return self._action_handlers["USE_TOOL"]
 
     def _build_action_services(self) -> ActionServices:
         return ActionServices(

@@ -484,3 +484,88 @@
 12:03:40 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory linked to Query id=qry_606e2e0a870f488ab0769d592a0a58fc
 12:03:40 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory appended turn query_id=qry_606e2e0a870f488ab0769d592a0a58fc q_len=18 a_len=152
 12:03:40 INFO [agent_heart.react_agent] [ReActAgent.handle] done transcript_lines=15 executed_steps=3
+12:20:42 INFO [__main__] [configure_logging] Logging configured level=DEBUG
+12:20:42 INFO [__main__] [configure_logging] Log file: /Users/zhaniya/Desktop/git-zaebaaal/my-react-agent/evaluation/agent.log
+12:20:42 INFO [__main__] [main] Starting initialisation sequence
+12:20:42 INFO [__main__] [create_prompt_registry] loaded default prompts=15
+12:20:42 INFO [evaluation.tools.web_search_tool] [DuckDuckGoTool.__init__] ready max_results=10 max_evidence_items=3 allow_wikipedia=False
+12:20:43 INFO [evaluation.tools.vector_search_tool] [VectorSearchTool.__init__] loaded_files=1 chunks=12
+12:20:43 INFO [__main__] [create_tools] Tools initialised count=4 keys=['wikipedia', 'web_search', 'calculator', 'vector_search']
+12:20:43 INFO [__main__] [create_llms] Bound roles planner=OllamaLlama3LLM summariser=OllamaLlama3LLM confidence=OllamaLlama3LLM refiner=OllamaLlama3LLM
+12:20:43 INFO [__main__] [main] LLMEntityExtractor initialised
+12:20:43 INFO [__main__] [create_parameter_assessor_factories] enabled my_react_agent.confidence_assessment.entity_alignment_assessor.EntityAlignmentAssessor
+12:20:43 INFO [__main__] [create_parameter_assessor_factories] enabled my_react_agent.confidence_assessment.answer_quality_assessor.AnswerQualityAssessor
+12:20:43 INFO [__main__] [create_parameter_assessor_factories] enabled my_react_agent.confidence_assessment.answer_realism_assessor.AnswerRealismAssessor
+12:20:43 INFO [__main__] [create_parameter_assessor_factories] total=3
+12:20:43 INFO [__main__] [plugins] none configured (REACT_AGENT_PLUGINS empty)
+12:20:43 INFO [agent_heart.react_agent] [ReActAgent.__init__] PromptRegistry ready defaults=15 overrides=0
+12:20:43 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory initialised max_turns=5
+12:20:43 INFO [my_react_agent.agent_memory.query_memory] QueryMemory initialised (no active query)
+12:20:43 INFO [my_react_agent.confidence_assessment.entity_alignment_assessor] [EntityAlignmentAssessor.__init__] ready prompt_id=confidence_entity_alignment fallback=0.50
+12:20:43 INFO [agent_heart.react_agent] [ReActAgent.__init__] Built ParameterAssessor from factory: EntityAlignmentAssessor
+12:20:43 INFO [my_react_agent.confidence_assessment.answer_quality_assessor] [AnswerQualityAssessor.__init__] ready prompt_id=confidence_answer_quality fallback=0.50
+12:20:43 INFO [agent_heart.react_agent] [ReActAgent.__init__] Built ParameterAssessor from factory: AnswerQualityAssessor
+12:20:43 INFO [my_react_agent.confidence_assessment.answer_realism_assessor] [AnswerRealismAssessor.__init__] ready prompt_id=confidence_answer_realism fallback=0.50
+12:20:43 INFO [agent_heart.react_agent] [ReActAgent.__init__] Built ParameterAssessor from factory: AnswerRealismAssessor
+12:20:43 INFO [my_react_agent.confidence_assessment.confidence_assessor] [ConfidenceAssessor.__init__] fallback=0.50 max_decimals=2 mismatch_penalty=0.98 include_tool_result_in_quality=True tool_result_max_chars=12000 log_parse_failures=True assessors=3
+12:20:43 INFO [agent_heart.react_agent] [ReActAgent.__init__] ConfidenceAssessor enabled assessors=3
+12:20:43 INFO [agent_heart.react_agent] [ReActAgent.__init__] Ready tools=4 max_steps=12 step_actions=5 low_conf_actions=5
+12:20:43 INFO [__main__] [main] ReActAgent constructed and ready
+12:20:50 INFO [__main__] [main] Handling user query length=104
+12:20:50 INFO [agent_heart.react_agent] [ReActAgent.handle] start question_len=104
+12:20:50 DEBUG [my_react_agent.agent_memory.query_memory] Cleared global_plan/step_trace/transcript/compat caches
+12:20:50 INFO [my_react_agent.agent_memory.query_memory] New query session started id=qry_99cdc888b6114c3c9cdf92a4ca42010d text_length=104
+12:20:50 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory synced query_id=qry_99cdc888b6114c3c9cdf92a4ca42010d entities=0 (new=0) preview=[]
+12:20:50 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory linked to Query id=qry_99cdc888b6114c3c9cdf92a4ca42010d
+12:20:50 INFO [agent_heart.react_agent] [ReActAgent._should_separate_question] Prompt length=794
+12:20:55 INFO [agent_heart.react_agent] [ReActAgent._should_separate_question] RAW: {"separate": false, "reason": ""}
+12:20:55 INFO [agent_heart.react_agent] [ReActAgent._should_separate_question] separate=False reason=
+12:20:55 INFO [agent_heart.react_agent] [ReActAgent.handle] separate_question=False
+12:20:55 INFO [agent_heart.react_agent] [ReActAgent.handle] using single-step plan
+12:20:55 DEBUG [my_react_agent.agent_memory.query_memory] Saved global plan steps=1
+12:20:55 INFO [agent_heart.react_agent] [ReActAgent.handle] executing steps=1 max_steps=12
+12:20:55 INFO [agent_heart.react_agent] [ReActAgent.handle] Step=1/1 start idx=1 deps=[]
+12:21:01 INFO [agent_heart.react_agent] [ReActAgent._decide_action_for_step] Step=1 RAW: Here is the response:
+
+{"think":"Tokio, Japan", "action":"USE_TOOL", "tool_name":"web_search", "tool_input":"","message":""}
+
+I chose to use the web search tool because the question asks for real-time data (current temperature and conditions) that may change over time.
+12:21:01 INFO [agent_heart.react_agent] [ReActAgent._decide_action_for_step] Plan instruction=tell me the current temperature and general conditions (e.g., cloudy, sunny) in Tokio, Japan, right now.
+12:21:01 WARNING [agent_heart.react_agent] [_safe_parse_json_object] JSONDecodeError=Expecting value pos=0 tail='"tool_name":"web_search", "tool_input":"","message":""}\n\nI chose to use the web search tool because the question asks for real-time data (current temperature and conditions) that may change over time.'
+12:21:01 INFO [agent_heart.react_agent] [ReActAgent._decide_action_for_step] Step=1 Parsed action=USE_TOOL tool=web_search tool_input_len=104
+12:21:01 INFO [agent_heart.react_agent] [ReActAgent.handle] Step=1 initial decision action=USE_TOOL tool=web_search
+12:21:01 INFO [my_react_agent.tool_management.tool_query_refiner] [refine] Start refine tool=web_search step_task='tell me the current temperature and general conditions (e.g., cloudy, sunny) in Tokio, Japan, right now.' user_question_len=104
+12:21:01 DEBUG [my_react_agent.tool_management.tool_query_refiner] [effective_cap] cap_attr=300 resolved_cap=300
+12:21:01 DEBUG [my_react_agent.tool_management.tool_query_refiner] [refine] prompt_len=1947
+12:21:01 DEBUG [my_react_agent.tool_management.tool_query_refiner] [refine] prompt_preview='You convert CURRENT STEP TASK into the exact INPUT STRING required by one TOOL.\nReturn STRICT JSON only: { "tool_input": "<string, <=300 chars>", "reason": "<short>" }\n\nGlobal rules:\n1) Use USER QUESTION as the source of truth for facts and numbers.\n2) Use DEPENDENT STEP RESULTS as additional facts (when relevant).\n3) Do not invent facts. If something is missing, write the best tool_input you can from available context.\n4) Produce a NORMAL tool input string (not URL parameters).\n5) Obey the TOOL INSTRUCTIONS / INPUT FORMAT / REGEX.\n6) Output STRICT JSON only.\n\nTOOL CONTRACT:\nName: web_search\nDescription: Web search via DuckDuckGo. Use for real-time or frequently changing facts.\nInstructions: Return a NORMAL internet search query (plain text words).\nRules:\n- Output MUST be a single-line str'
+12:21:05 DEBUG [my_react_agent.tool_management.tool_query_refiner] [refine] raw_llm_output_len=104
+12:21:05 DEBUG [my_react_agent.tool_management.tool_query_refiner] [refine] raw_llm_output_preview='Here is the output in STRICT JSON format:\n\n{\n"tool_input": "Tokyo Japan current weather",\n"reason": ""\n}'
+12:21:05 DEBUG [my_react_agent.tool_management.tool_query_refiner] [_safe_parse_json] direct parse failed error=JSONDecodeError('Expecting value: line 1 column 1 (char 0)')
+12:21:05 DEBUG [my_react_agent.tool_management.tool_query_refiner] [_safe_parse_json] parsed via substring braced extraction
+12:21:05 DEBUG [my_react_agent.tool_management.tool_query_refiner] [sanitize] before='Tokyo Japan current weather' after='Tokyo Japan current weather'
+12:21:05 INFO [my_react_agent.tool_management.tool_query_refiner] [refine] candidate_tool_input='Tokyo Japan current weather'
+12:21:05 DEBUG [my_react_agent.tool_management.tool_query_refiner] [refine] regex_check pattern='^(?:(?:web|news):\\s*)?[^{}\\n\\r<>]{1,300}(?:\\s+time:(?:past1h|past24h|past7d|past30d))?\\s*$' ok=True
+12:21:05 INFO [my_react_agent.tool_management.tool_query_refiner] [refine] final_tool_input='Tokyo Japan current weather'
+12:21:05 INFO [agent_heart.react_agent] [ReActAgent._execute_and_observe] Executing tool=web_search input_len=27
+12:21:05 INFO [evaluation.tools.web_search_tool] [DuckDuckGoTool.execute] mode=web query='Tokyo Japan current weather' df=None
+12:21:06 INFO [evaluation.tools.web_search_tool] [DuckDuckGoTool.http] endpoint=lite method=GET attempt=1 status=200 ms=856
+12:21:14 INFO [agent_heart.react_agent] [ReActAgent._execute_and_observe] Observation_len=616 evidence_len=800 raw_len=1012
+12:21:14 DEBUG [my_react_agent.confidence_assessment.entity_alignment_assessor] [EntityAlignmentAssessor.assess] q_len=104 a_len=616 tool_len=0
+12:21:17 DEBUG [my_react_agent.confidence_assessment.entity_alignment_assessor] [EntityAlignmentAssessor.assess] same_entity=True conf=1.00 score=1.00 reason=fallback
+12:21:17 DEBUG [my_react_agent.confidence_assessment.answer_quality_assessor] [AnswerQualityAssessor.assess] q_len=104 a_len=616 tool_len=0
+12:21:21 DEBUG [my_react_agent.confidence_assessment.answer_quality_assessor] [AnswerQualityAssessor.assess] score=1.00 reason=provides correct temperature (50°F) and general conditions (partly sunny)
+12:21:21 DEBUG [my_react_agent.confidence_assessment.answer_realism_assessor] [AnswerRealismAssessor.assess] q_len=104 a_len=616 tool_len=0
+12:21:24 DEBUG [my_react_agent.confidence_assessment.answer_realism_assessor] [AnswerRealismAssessor.assess] score=1.00 reason=answer provides specific temperature and general condition details, with credible sources
+12:21:24 INFO [agent_heart.react_agent] [ReActAgent._should_retry_low_conf_step] Step=1 conf=1.00 >= threshold=0.70 -> ok
+12:21:24 INFO [agent_heart.react_agent] [ReActAgent._update_previous_step_results] Stored result for step 1
+12:21:24 INFO [agent_heart.react_agent] [EntityExtract] step=1 raw_candidates=[]
+12:21:24 INFO [agent_heart.react_agent] [EntityExtract] step=1 uniq=[]
+12:21:24 INFO [agent_heart.react_agent] [EntityExtract] step=1 added=[] existing=[] total_entities=0
+12:21:24 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory synced query_id=qry_99cdc888b6114c3c9cdf92a4ca42010d entities=0 (new=0) preview=[]
+12:21:24 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory linked to Query id=qry_99cdc888b6114c3c9cdf92a4ca42010d
+12:21:24 DEBUG [my_react_agent.agent_memory.query_memory] Set transcript lines total=6
+12:21:29 DEBUG [my_react_agent.agent_memory.query_memory] Set transcript lines total=7
+12:21:29 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory synced query_id=qry_99cdc888b6114c3c9cdf92a4ca42010d entities=0 (new=0) preview=[]
+12:21:29 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory linked to Query id=qry_99cdc888b6114c3c9cdf92a4ca42010d
+12:21:29 INFO [my_react_agent.agent_memory.conversation_memory] ConversationMemory appended turn query_id=qry_99cdc888b6114c3c9cdf92a4ca42010d q_len=104 a_len=184
+12:21:29 INFO [agent_heart.react_agent] [ReActAgent.handle] done transcript_lines=7 executed_steps=1

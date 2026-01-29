@@ -154,9 +154,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-# ------------------------------------------------------------------------------
 # 1) LLM adapter (Ollama -> your LLMBase interface)
-# ------------------------------------------------------------------------------
 class OllamaGemmaLLM(LLMBase):
     """
     Minimal LLM adapter that satisfies your project's LLMBase interface.
@@ -198,10 +196,8 @@ class OllamaGemmaLLM(LLMBase):
             raise ConnectionError(f"Ollama error: {str(e)}")
 
 
-# ------------------------------------------------------------------------------
 # 2) Safe calculator implementation (tool backend)
 #    - This is intentionally limited to basic arithmetic for safety.
-# ------------------------------------------------------------------------------
 _ALLOWED_BIN_OPS = {
     ast.Add: op.add,
     ast.Sub: op.sub,
@@ -260,12 +256,9 @@ def _extract_math_expression(text: str) -> Optional[str]:
     expr = expr.replace("^", "**")  # convenience: allow ^ as exponent
     return expr or None
 
-
-# ------------------------------------------------------------------------------
 # 3) Tool definition (CalculatorTool)
 #    - Must implement your AgentTool interface:
 #      name, description, optional refiner contract, and execute().
-# ------------------------------------------------------------------------------
 class CalculatorTool(AgentTool):
     """
     A minimal AgentTool used for the QuickStart demo.
@@ -348,9 +341,7 @@ class CalculatorTool(AgentTool):
             )
 
 
-# ------------------------------------------------------------------------------
 # 4) Logging setup
-# ------------------------------------------------------------------------------
 def configure_logging(level: int = logging.INFO) -> None:
     """
     Log to:
@@ -373,9 +364,7 @@ def configure_logging(level: int = logging.INFO) -> None:
     )
 
 
-# ------------------------------------------------------------------------------
 # 5) Prompt registry
-# ------------------------------------------------------------------------------
 def create_prompt_registry() -> PromptRegistry:
     """
     Build a PromptRegistry seeded with DEFAULT_PROMPTS.
@@ -386,9 +375,7 @@ def create_prompt_registry() -> PromptRegistry:
     return PromptRegistry(_defaults=dict(DEFAULT_PROMPTS))
 
 
-# ------------------------------------------------------------------------------
 # 6) Optional: confidence assessor factories
-# ------------------------------------------------------------------------------
 def create_parameter_assessor_factories() -> List[ParameterAssessorFactory]:
     """
     These factories enable optional step-quality gating.
@@ -413,9 +400,7 @@ def create_parameter_assessor_factories() -> List[ParameterAssessorFactory]:
     return factories
 
 
-# ------------------------------------------------------------------------------
 # 7) QuickStart CLI
-# ------------------------------------------------------------------------------
 def main() -> None:
     """
     Entry point:
