@@ -97,15 +97,14 @@ To run the agent you need two things:
 This example uses a minimal tool called **multiplier** that multiplies two numbers. 
 
 - A tool should contain methods for refiner to get structured input. The tool also defines a regex (refiner_input_regex) to validate refined inputs before execution. This helps prevent accidental tool calls on malformed strings and keeps behavior predictable. The **refiner** is a prompt-based step that converts natural language into the exact format the tool expects. 
-
 That's why in these example you can run not just **4*5** query but also **calculate 4*5/what is 4 times 5?/multiply 4 and 5**.
 
-#### How the agent decides to call the tool
-- The planner LLM sees each tool’s:
+- How the agent decides to call the tool
+The planner LLM sees each tool’s:
 1. name
 2. description
 
-- To make a tool easier to select:
+To make a tool **easier to select**:
 1. Use a very specific description
 2. Provide strict refiner_instructions and refiner_input_regex
 3. Keep the input format simple 
@@ -194,24 +193,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-```
-
-## If you want to disable logger messages:
-- Do this at the very top of main() (before anything imports/initializes logging):
-
-```python
-import logging
-
-def disable_all_logs() -> None:
-    # Stops everything routed through Python logging
-    logging.disable(logging.CRITICAL)
-
-    # Also silence common chatty libraries explicitly (extra-safe)
-    for name in ("httpx", "httpcore", "ollama"):
-        logging.getLogger(name).disabled = True
-
-# call first
-disable_all_logs()
 ```
 
 ## Architecture (precise)

@@ -184,10 +184,6 @@ def _default_low_conf_actions() -> List[Action]:
 
 
 def _default_parameter_assessor_factories() -> List[ParameterAssessorFactory]:
-    """
-    Optional defaults: if modules exist, they will be used.
-    If not, the agent remains fully usable without assessors.
-    """
     import importlib
 
     factories: List[ParameterAssessorFactory] = []
@@ -488,9 +484,6 @@ class ReActAgent(
             len(getattr(self.confidence_assessor, "parameter_assessors", []) or []),
         )
 
-    # ---------------------------
-    # Context helpers
-    # ---------------------------
     def _collect_all_previous_extracted_facts(self) -> List[Dict[str, Any]]:
         prev: List[Dict[str, Any]] = getattr(self, "_previous_step_results", []) or []
         out: List[Dict[str, Any]] = []
