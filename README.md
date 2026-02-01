@@ -195,6 +195,41 @@ if __name__ == "__main__":
     main()
 ```
 
+#### Logger Messages Configuration
+
+What the logging setup gives you:
+1. Shows INFO/DEBUG logs
+So you see step planning, tool refinement, retries, confidence gating, etc.
+2. Adds the nice prefix
+Timestamp + level + logger name, e.g.
+21:07:30 INFO [agent_heart.react_agent] ...
+3. Keeps logs and prints in order
+Using a stdout handler avoids weird interleaving where logs appear before/after print(...) unexpectedly.
+
+```python
+import logging
+import sys
+
+def _setup_logging() -> None:
+    logging.basicConfig(
+        level=logging.INFO,  # change to logging.DEBUG to see everything
+        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        datefmt="%H:%M:%S",
+        handlers=[logging.StreamHandler(sys.stdout)],  # keep logs + prints in order
+    )
+
+    # Optional: make your package extra chatty
+    logging.getLogger("my_react_agent").setLevel(logging.DEBUG)
+    logging.getLogger("agent_heart").setLevel(logging.DEBUG)
+
+def main() -> None:
+    _setup_logging()
+
+    tools = [MultiplicationTool()]
+    agent = ReActAgent.create(llm="llama3:8b", tools=tools)
+    ...
+```
+
 ## Architecture (precise)
 
 ### High-level flow
