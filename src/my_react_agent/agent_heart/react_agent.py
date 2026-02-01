@@ -28,6 +28,7 @@ from ..agent_core.agent_actions import (
 from ..agent_core.agent_actions.need_context_action import NeedContextAction
 
 from ..llm_adapters.llm_base import LLMBase
+from ..llm_adapters.default_ollama_llm import DefaultOllamaLLM
 from ..tool_management.tool_executor import ToolExecutor
 from ..tool_management.tool_query_refiner import ToolQueryRefiner
 from ..tool_management.tools.agent_tool import AgentTool
@@ -63,6 +64,27 @@ ParameterAssessorLike = Union[ParameterAssessor, ParameterAssessorFactory]
 
 ToolInput = Union[Mapping[str, AgentTool], Iterable[AgentTool]]
 LLMFactory = Callable[[str], LLMBase]
+
+LLMSpec = Union[LLMBase, LLMFactory, str]
+LLMFactoryBuilder = Callable[[str], LLMFactory]
+
+_DEFAULT_ROLE_TEMPS: Dict[str, float] = {
+    "planner_llm": 0.2,
+    "summariser_llm": 0.1,
+    "confidence_llm": 0.0,
+    "refiner_llm": 0.0,
+}
+
+
+
+def _default_ollama_factory(model: str) -> LLMFactory:
+    def _make(role: str) -> LLMBase:
+        return _DefaultOllamaLLM(
+            model=model,
+            temperature=_DEFAULT_ROLE_TEMPS.get(role, 0.1),
+        )
+
+    return _make
 
 
 def _normalise_tools(tools: ToolInput) -> Dict[str, AgentTool]:
@@ -144,7 +166,7 @@ class ReActAgent(
     @classmethod
     def create(
         cls,
-        llm: Union[LLMBase, LLMFactory],
+        llm: LLMSpec,
         tools: ToolInput,
         *,
         prompts: Optional[PromptRegistry] = None,
@@ -158,10 +180,15 @@ class ReActAgent(
         enable_default_assessors: bool = True,
         role_overrides: Optional[Dict[str, LLMBase]] = None,
         entity_extractor: Optional[EntityExtractor] = None,
+        llm_factory: Optional[LLMFactoryBuilder] = None,
     ) -> "ReActAgent":
         tools_dict = _normalise_tools(tools)
 
         prompts = prompts or _default_prompt_registry()
+
+        if isinstance(llm, str):
+            builder = llm_factory or _default_ollama_factory
+            llm = builder(llm)
 
         def pick(role: str) -> LLMBase:
             if role_overrides and role in role_overrides and role_overrides[role] is not None:
@@ -747,7 +774,9 @@ class ReActAgent(
 
         self.query_memory.start_new(question)
         if self.query_memory.current_query_model:
-            self.query_memory.current_query_model = replace(self.query_memory.current_query_model, status=QueryStatus.RUNNING)
+            self.query_memory.current_query_model = replace(
+                self.query_memory.current_query_model, status=QueryStatus.RUNNING
+            )
             self.conversation_memory.add_query(self.query_memory.current_query_model, set_current=True)
 
         self._reset_run_state()
@@ -817,7 +846,9 @@ class ReActAgent(
                 getattr(decision, "tool_name", "") or "",
             )
 
-            max_step_attempts = int(getattr(self.config, "max_step_retries", 20)) if getattr(self.config, "assess_all_steps", True) else 0
+            max_step_attempts = (
+                int(getattr(self.config, "max_step_retries", 20)) if getattr(self.config, "assess_all_steps", True) else 0
+            )
             step_attempt = 0
 
             need_context_attempt = 0

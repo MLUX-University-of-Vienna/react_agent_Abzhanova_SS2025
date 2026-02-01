@@ -102,7 +102,7 @@ class TextUtilsMixin:
         sb = self._balance_json_closers(s)
         obj = try_load(sb)
         if obj is not None:
-            return obj
+            return objs
 
         logger.warning("[_safe_parse_json_object] json parse failed; returning fallback keys=%s", list(fb.keys()))
         return fb
