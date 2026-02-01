@@ -7,7 +7,7 @@ It plans a multi-step solution, executes each step via actions/tools, evaluates 
 
 ## Why this project
 
-LangChain and LlamaIndex are strong frameworks—but they’re optimised for *different priorities*:
+Similar projects- LangChain and LlamaIndex are strong frameworks—but they’re optimised for *different priorities*:
 
 - **LangChain** is an **integration + composition** system (chains, agents, tool wrappers, retrievers, many providers). It’s great when you want to assemble an app quickly from lots of building blocks.
 - **LlamaIndex** is a **data/RAG framework** (ingestion, indexing, retrieval, routing, structured querying). It’s great when your core problem is “connect LLMs to your data” at scale.
@@ -89,415 +89,106 @@ pip install git+https://git01lab.cs.univie.ac.at/zhaniyaa77/my-react-agent.git
 ollama pull llama3
 
 ## Quickstart
+
+To run the agent you need two things:
+1. At least one tool (otherwise the agent will show error)
+2. An LLM model (so the agent can reason and decide when/how to use tools)
+This example uses a minimal tool called multiplier that multiplies two numbers. 
+
+- A tool should contain methods for refiner to get structured input. The tool also defines a regex (refiner_input_regex) to validate refined inputs before execution. This helps prevent accidental tool calls on malformed strings and keeps behavior predictable. 
+
+The refiner is a prompt-based step that converts natural language into the exact format the tool expects. 
+That's why in these example you can run not just "4*5" query but also "calculate 4*5"/"what is 4 times 5?"/"multiply 4 and 5".
+
+- Pull the model used in this example:
+ollama pull llama3:8b
+
 ```python
 from __future__ import annotations
 
-"""
-QuickStart entrypoint for my_react_agent
-
-What this script does (high level):
-1) Configures logging (console + rotating log file)
-2) Creates a PromptRegistry (the agent's prompt templates)
-3) Creates a minimal Tool set (CalculatorTool) so the agent can take tool actions
-4) Creates 4 LLM "roles" (planner/summariser/confidence/refiner) using Ollama
-5) Builds a ReActAgent with standard action handlers + confidence assessors
-6) Runs a simple CLI chat loop: you type -> agent plans -> agent executes -> prints trace
-
-Requirements (before running):
-- Install and start Ollama: https://ollama.com
-- Pull the model used below (default: gemma3:4b):
-    ollama pull gemma3:4b
-
-Run:
-    python -m evaluation.quickstart   (or whatever module path is)
-
-Try:
-    What is (23*7) - 5?
-    Compute 2^10
-"""
-
-import ast
-import importlib
-import logging
-import operator as op
 import re
-import sys
-from dataclasses import dataclass
 from datetime import datetime
-from logging.handlers import RotatingFileHandler
-from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
 import ollama
 
-from my_react_agent.llm_adapters.llm_base import LLMBase
-from my_react_agent.tool_management.tools.agent_tool import AgentTool
 from my_react_agent.agent_memory.data_structures import Evidence
+from my_react_agent.tool_management.tools.agent_tool import AgentTool
 
-from my_react_agent.agent_core.agent_actions import (
-    AnswerByItselfAction,
-    ClarifyAction,
-    UseToolAction,
-    StopAction,
-)
-from my_react_agent.agent_core.agent_actions.need_context_action import NeedContextAction
-from my_react_agent.agent_heart.react_agent import ReActAgent, ParameterAssessorFactory
-from my_react_agent.agent_memory.llm_entity_extractor import LLMEntityExtractor
-from my_react_agent.agent_prompts.prompt_registry import PromptRegistry
-from my_react_agent.agent_prompts.defaults_prompts import DEFAULT_PROMPTS
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+from my_react_agent.agent_heart.react_agent import ReActAgent
 
 
-# 1) LLM adapter (Ollama ->  LLMBase interface)
-class OllamaGemmaLLM(LLMBase):
-    """
-    Minimal LLM adapter that satisfies project's LLMBase interface.
-
-    The agent will call .generate(prompt) for multiple "roles":
-    - planner_llm: decides whether to split the question and chooses actions/tools
-    - summariser_llm: summarises tool outputs / produces the final synthesis
-    - confidence_llm: scores step quality & alignment (if you enabled assessors)
-    - refiner_llm: rewrites a step into tool-specific input strings
-
-    In QuickStart we reuse the same model for all roles for simplicity.
-    """
-
-    def __init__(self, model: str = "gemma3:4b", temperature: float = 0.1):
-        self.model = model
-        self.temperature = temperature
-
-    def generate(self, prompt: str, **kwargs) -> str:
-        """
-        Send a prompt to Ollama and return the raw text response.
-
-        kwargs you may pass (optional):
-        - num_ctx: context window (defaults to 2048)
-        - stop: stop tokens list (defaults to ["<|endoftext|>"])
-        """
-        try:
-            response = ollama.generate(
-                model=self.model,
-                prompt=prompt,
-                options={
-                    "temperature": self.temperature,
-                    "num_ctx": kwargs.get("num_ctx", 2048),
-                    "stop": kwargs.get("stop", ["<|endoftext|>"]),
-                },
-            )
-            return response["response"]
-        except Exception as e:
-            # Raising here will surface a clear message in the QuickStart
-            raise ConnectionError(f"Ollama error: {str(e)}")
-
-
-# 2) Safe calculator implementation (tool backend)
-#    - This is intentionally limited to basic arithmetic for safety.
-_ALLOWED_BIN_OPS = {
-    ast.Add: op.add,
-    ast.Sub: op.sub,
-    ast.Mult: op.mul,
-    ast.Div: op.truediv,
-    ast.FloorDiv: op.floordiv,
-    ast.Mod: op.mod,
-    ast.Pow: op.pow,
-}
-_ALLOWED_UNARY_OPS = {ast.UAdd: op.pos, ast.USub: op.neg}
-
-
-def _safe_eval(expr: str) -> float:
-    """
-    Evaluate an arithmetic expression securely using Python's AST.
-
-    Only these are allowed:
-    - numbers (int/float)
-    - binary ops: + - * / // % **
-    - unary ops: + -
-    Anything else raises ValueError.
-    """
-    node = ast.parse(expr, mode="eval")
-
-    def _eval(n: ast.AST):
-        if isinstance(n, ast.Expression):
-            return _eval(n.body)
-        if isinstance(n, ast.Constant) and isinstance(n.value, (int, float)):
-            return n.value
-        if isinstance(n, ast.BinOp) and type(n.op) in _ALLOWED_BIN_OPS:
-            return _ALLOWED_BIN_OPS[type(n.op)](_eval(n.left), _eval(n.right))
-        if isinstance(n, ast.UnaryOp) and type(n.op) in _ALLOWED_UNARY_OPS:
-            return _ALLOWED_UNARY_OPS[type(n.op)](_eval(n.operand))
-        raise ValueError(f"Unsupported expression element: {type(n).__name__}")
-
-    return float(_eval(node))
-
-
-def _extract_math_expression(text: str) -> Optional[str]:
-    """
-    Extract a plausible arithmetic substring from user text.
-
-    Examples:
-      "Compute 2^10"        -> "2^10" (later normalized to 2**10)
-      "What is (3*4)-1?"    -> "(3*4)-1"
-    """
-    if not text:
-        return None
-    s = text.strip()
-
-    # Grab a substring that looks like arithmetic.
-    m = re.search(r"[0-9\.\s\+\-\*\/\(\)\%\^]+", s)
-    if not m:
-        return None
-    expr = m.group(0).strip()
-    expr = expr.replace("^", "**")  # convenience: allow ^ as exponent
-    return expr or None
-
-# 3) Tool definition (CalculatorTool)
-#    - Must implement AgentTool interface:
-#      name, description, optional refiner contract, and execute().
-class CalculatorTool(AgentTool):
-    """
-    A minimal AgentTool used for the QuickStart demo.
-
-    Why this exists:
-    - ReActAgent requires at least one tool to demonstrate "USE_TOOL".
-    - Calculator is deterministic, safe, and shows end-to-end tool calling.
-    """
-
+class MultiplicationTool(AgentTool):
     @property
     def name(self) -> str:
-        # IMPORTANT: This string is what the agent will reference in tool_name.
-        return "calculator"
+        return "multiplier"
 
     @property
     def description(self) -> str:
-        return "Safely evaluates basic arithmetic expressions (e.g. 2+2, (3.5*4)-1, 2^10)."
+        return "Multiplies two numbers. Tool input must be '<number>*<number>' (e.g. 45*7)."
 
-    # ToolQueryRefiner contracts (used by refiner_llm to format tool input)
+    # Refiner contract: makes tool input predictable
     @property
     def refiner_instructions(self) -> str:
-        return "Output only a valid arithmetic expression using digits and operators + - * / // % ** ( ) ."
+        return "Output ONLY '<number>*<number>' (example: 45*7). No words."
 
     @property
     def refiner_input_format(self) -> str:
-        return "<arithmetic expression>"
+        return "<number>*<number>"
 
     @property
     def refiner_input_regex(self) -> Optional[str]:
-        # Used by ToolQueryRefiner to validate candidate inputs.
-        return r"^[0-9\.\s\+\-\*\/\(\)\%\^]+$"
+        # Keep it strict so the refiner can be validated before tool execution
+        return r"^\s*-?\d+(\.\d+)?\s*\*\s*-?\d+(\.\d+)?\s*$"
 
     def execute(self, input: str) -> Evidence:
-        """
-        Execute the tool and return an Evidence object.
-
-        Evidence is the common format agent uses to:
-        - build an observation (summariser_llm)
-        - store extracted facts
-        - optionally assess confidence
-        """
-        q = (input or "").strip()
-        expr = _extract_math_expression(q)
-
-        if not expr:
-            return Evidence(
-                tool=self.name,
-                content="Calculator failed: no arithmetic expression found.",
-                url=None,
-                extracted={"error": True, "message": "no_expression", "input": q},
-                as_of=datetime.utcnow(),
-                confidence=0.2,
-            )
-
+        s = (input or "").strip()
         try:
-            value = _safe_eval(expr)
+            left, right = s.split("*", 1)      
+            result = float(left) * float(right)  
 
-            # Render clean integers as "42" instead of "42.0"
-            if abs(value - round(value)) < 1e-12:
-                rendered = str(int(round(value)))
-            else:
-                rendered = str(value)
+            rendered = str(int(result)) if abs(result - round(result)) < 1e-12 else str(result)
 
             return Evidence(
                 tool=self.name,
-                content=f"{expr} = {rendered}",
+                content=f"{left.strip()} * {right.strip()} = {rendered}",
                 url=None,
-                extracted={"expression": expr, "result": value},
+                extracted={"expression": s, "result": result},
                 as_of=datetime.utcnow(),
                 confidence=0.95,
             )
         except Exception as e:
+            # Minimal fallback if refiner didn’t behave / user input slipped through
             return Evidence(
                 tool=self.name,
-                content=f"Calculator failed: {e}",
+                content=f"Multiply failed: expected '<number>*<number>' (e.g. 45*7). Error: {e}",
                 url=None,
-                extracted={"error": True, "message": str(e), "expression": expr, "input": q},
+                extracted={"error": True, "input": s},
                 as_of=datetime.utcnow(),
                 confidence=0.1,
             )
 
 
-# 4) Logging setup
-def configure_logging(level: int = logging.INFO) -> None:
-    """
-    Log to:
-    - stdout (so you see what's happening in the terminal)
-    - a rotating local file "agent.log" next to this script (for debugging)
 
-    Tip: set level=logging.DEBUG to see full prompts and tool IO.
-    """
-    log_path = Path(__file__).resolve().with_name("agent.log")
-    handlers = [
-        logging.StreamHandler(sys.stdout),
-        RotatingFileHandler(str(log_path), maxBytes=2_000_000, backupCount=2, encoding="utf-8"),
-    ]
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-        datefmt="%H:%M:%S",
-        handlers=handlers,
-        force=True,
-    )
-
-
-# 5) Prompt registry
-def create_prompt_registry() -> PromptRegistry:
-    """
-    Build a PromptRegistry seeded with DEFAULT_PROMPTS.
-
-    PromptRegistry lets you override any prompt by ID if you want to customize behavior:
-      prompts.set(PromptId.PLAN_QUESTION_STEPS, PromptTemplate(...))
-    """
-    return PromptRegistry(_defaults=dict(DEFAULT_PROMPTS))
-
-
-# 6) Optional: confidence assessor factories
-def create_parameter_assessor_factories() -> List[ParameterAssessorFactory]:
-    """
-    These factories enable optional step-quality gating.
-
-    If the assessor modules exist, ConfidenceAssessor will call them after each step.
-    If they don't exist, QuickStart still works (it just won't score/gate as much).
-    """
-    factories: List[ParameterAssessorFactory] = []
-    candidates = [
-        ("my_react_agent.confidence_assessment.entity_alignment_assessor", "EntityAlignmentAssessor"),
-        ("my_react_agent.confidence_assessment.answer_quality_assessor", "AnswerQualityAssessor"),
-        ("my_react_agent.confidence_assessment.answer_realism_assessor", "AnswerRealismAssessor"),
-    ]
-    for mod_path, cls_name in candidates:
-        try:
-            mod = importlib.import_module(mod_path)
-            cls = getattr(mod, cls_name)
-            factories.append(lambda llm, prompts, _cls=cls: _cls(llm, prompts=prompts))
-            logger.info("enabled assessor %s.%s", mod_path, cls_name)
-        except Exception as e:
-            logger.info("assessor %s.%s not available (skipping): %r", mod_path, cls_name, e)
-    return factories
-
-
-# 7) QuickStart 
 def main() -> None:
-    """
-    Entry point:
-    - wires everything together
-    - starts a simple chat loop
-    """
-    configure_logging(logging.INFO)
+    tools = [MultiplicationTool()]
 
-    # Prompts control the agent's planning, tool refinement, summaries, and confidence scoring.
-    prompts = create_prompt_registry()
+    agent = ReActAgent.create(llm="llama3:8b", tools=tools)
 
-    # Minimal tool set (ReActAgent requires at least one tool).
-    tools: Dict[str, object] = {"calculator": CalculatorTool()}
-
-    # Create LLM instances for each role.
-    # For production you can use different models per role; QuickStart uses one for simplicity.
-    llms = {
-        "planner_llm": OllamaGemmaLLM(),
-        "summariser_llm": OllamaGemmaLLM(),
-        "confidence_llm": OllamaGemmaLLM(),
-        "refiner_llm": OllamaGemmaLLM(),
-    }
-
-    # Entity extractor helps the agent resolve references (names/entities) during memory/fact storage.
-    entity_extractor = LLMEntityExtractor(llms["summariser_llm"], prompts=prompts)
-
-    # Actions are what the planner is allowed to choose each step.
-    # - NeedContextAction: rewrite vague tasks (pronouns / missing entity)
-    # - AnswerByItselfAction: answer without tools
-    # - ClarifyAction: ask user for missing info
-    # - UseToolAction: call one of the registered tools
-    # - StopAction: stop early (if done)
-    step_actions = [
-        NeedContextAction(),
-        AnswerByItselfAction(),
-        ClarifyAction(),
-        UseToolAction(),
-        StopAction(),
-    ]
-
-    # Low-confidence action catalogue: used when a step result is judged unreliable.
-    # Typically we bias towards: try a different tool / retry with better input / fallback to no-tool answer.
-    low_conf_actions = [
-        NeedContextAction(),
-        UseToolAction(),
-        AnswerByItselfAction(),
-        StopAction(),
-        ClarifyAction(),
-    ]
-
-    # Optional: confidence assessors to score each step's result.
-    parameter_assessors = create_parameter_assessor_factories()
-
-    # Construct the agent.
-    # Key knobs:
-    # - max_steps: cap on total planned steps
-    # - step_actions / low_conf_actions: what decisions are available
-    agent = ReActAgent(
-        planner_llm=llms["planner_llm"],
-        summariser_llm=llms["summariser_llm"],
-        confidence_llm=llms["confidence_llm"],
-        refiner_llm=llms["refiner_llm"],
-        entity_extractor=entity_extractor,
-        tools=tools,
-        prompts=prompts,
-        max_steps=8,
-        step_actions=step_actions,
-        low_conf_actions=low_conf_actions,
-        parameter_assessors=parameter_assessors,
-    )
-
-    print(
-        "\nQuickStart ReAct Agent (Gemma via Ollama)\n"
-        "This demo only registers one tool: calculator.\n"
-        "Try: 'What is (23*7) - 5?' or 'Compute 2^10'\n"
-        "Type 'exit' to quit.\n"
-    )
-
-    # Simple REPL: every user input runs a full plan→execute cycle.
+    print("\nQuickStart: my-react-agent (minimal)\nType 'exit' to quit.\n")
     while True:
-        user_input = input("You: ").strip()
-
-        if user_input.lower() in {"exit", "quit"}:
-            print("Goodbye!")
+        q = input("You: ").strip()
+        if q.lower() in {"exit", "quit"}:
             break
-
-        if not user_input:
+        if not q:
             continue
-
-        # agent.handle() returns a readable transcript containing:
-        # - planned steps
-        # - actions taken
-        # - observations/evidence
-        # - final answer
-        reply = agent.handle(user_input)
-        print(f"{reply}\n")
-
+        print(agent.handle(q))
+        print()
 
 if __name__ == "__main__":
     main()
 ```
+
 ## If you want to disable logger messages:
 - Do this at the very top of main() (before anything imports/initializes logging):
 
