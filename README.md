@@ -309,11 +309,17 @@ def main() -> None:
   A plugin module exposes `plugin.register(ctx)` and can add tools/actions/assessors/prompts.
 
 
-## Adding a Custom Action
-- Adding a Custom Action (Example: GreetingAction)
+## How to add a Custom Action
+- Adding a Custom Action (Example: **StarWarsAnswer**)
 
-- Goal: If the user starts with a greeting (e.g., “hi”, “hello”, “good morning”), the agent should include a greeting back in the final answer.
+- Goal: If the user asks about Star Wars (e.g. “Who is Anakin Skywalker?”), the agent should include the phrase "May the Force be with you!" in the final answer.
 
+- `StarWarsAnswerAction` advertises a new action the agent can choose: "STARWARS_ANSWER".
+- `StarWarsAnswerHandler` implements the action and returns a final answer immediately, without calling any tools.
+
+- How to use:
+1. Register the handler in `action_handlers` with the same key as Action.name.
+2. Include `StarWarsAnswerAction()` in `step_actions` (and also in `low_conf_actions`).
 
 ```python
 from __future__ import annotations
