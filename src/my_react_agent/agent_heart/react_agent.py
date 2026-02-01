@@ -68,6 +68,9 @@ LLMFactory = Callable[[str], LLMBase]
 LLMSpec = Union[LLMBase, LLMFactory, str]
 LLMFactoryBuilder = Callable[[str], LLMFactory]
 
+LLMRoleMap = Mapping[str, LLMSpec]
+LLMInput = Union[LLMSpec, LLMRoleMap]
+
 _DEFAULT_ROLE_TEMPS: Dict[str, float] = {
     "planner_llm": 0.2,
     "summariser_llm": 0.1,
@@ -76,15 +79,62 @@ _DEFAULT_ROLE_TEMPS: Dict[str, float] = {
 }
 
 
-
 def _default_ollama_factory(model: str) -> LLMFactory:
     def _make(role: str) -> LLMBase:
-        return _DefaultOllamaLLM(
+        return DefaultOllamaLLM(
             model=model,
             temperature=_DEFAULT_ROLE_TEMPS.get(role, 0.1),
         )
 
     return _make
+
+
+def _coerce_role_overrides(
+    llm_or_models: LLMInput,
+    *,
+    llm_factory: Optional[LLMFactoryBuilder] = None,
+) -> Tuple[LLMSpec, Optional[Dict[str, LLMBase]]]:
+    if not isinstance(llm_or_models, Mapping) or isinstance(llm_or_models, str):
+        return llm_or_models, None
+
+    role_map: LLMRoleMap = llm_or_models
+
+    base_spec: Optional[LLMSpec] = None
+    if "default" in role_map and role_map["default"] is not None:
+        base_spec = role_map["default"]
+    else:
+        for _k, _v in role_map.items():
+            if _v is not None:
+                base_spec = _v
+                break
+
+    if base_spec is None:
+        raise ValueError("llm_or_models mapping is empty or all values are None")
+
+    builder = llm_factory or _default_ollama_factory
+    role_overrides: Dict[str, LLMBase] = {}
+
+    for role, spec in role_map.items():
+        if role == "default":
+            continue
+        if spec is None:
+            continue
+
+        if isinstance(spec, LLMBase):
+            role_overrides[role] = spec
+            continue
+
+        if isinstance(spec, str):
+            role_overrides[role] = builder(spec)(role)
+            continue
+
+        if callable(spec):
+            role_overrides[role] = spec(role)
+            continue
+
+        raise TypeError(f"Unsupported llm spec for role {role!r}: {type(spec).__name__}")
+
+    return base_spec, (role_overrides or None)
 
 
 def _normalise_tools(tools: ToolInput) -> Dict[str, AgentTool]:
@@ -226,6 +276,46 @@ class ReActAgent(
             low_conf_actions=low_conf_actions,
             parameter_assessors=parameter_assessors,
             action_handlers=action_handlers,
+        )
+
+    @classmethod
+    def with_assessors(
+        cls,
+        llm_or_models: LLMInput,
+        tools: ToolInput,
+        assessors: Iterable[ParameterAssessorLike],
+        *,
+        llm_factory: Optional[LLMFactoryBuilder] = None,
+        **kwargs: Any,
+    ) -> "ReActAgent":
+        base_llm, role_overrides = _coerce_role_overrides(llm_or_models, llm_factory=llm_factory)
+        return cls.create(
+            base_llm,
+            tools,
+            parameter_assessors=list(assessors or []),
+            role_overrides=role_overrides,
+            llm_factory=llm_factory,
+            **kwargs,
+        )
+
+    @classmethod
+    def with_actions(
+        cls,
+        llm_or_models: LLMInput,
+        tools: ToolInput,
+        actions: Iterable[Action],
+        *,
+        llm_factory: Optional[LLMFactoryBuilder] = None,
+        **kwargs: Any,
+    ) -> "ReActAgent":
+        base_llm, role_overrides = _coerce_role_overrides(llm_or_models, llm_factory=llm_factory)
+        return cls.create(
+            base_llm,
+            tools,
+            step_actions=list(actions or []),
+            role_overrides=role_overrides,
+            llm_factory=llm_factory,
+            **kwargs,
         )
 
     def __init__(
