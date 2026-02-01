@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple, Union
 
 from ..agent_memory.data_structures import (
     QueryStatus,
@@ -16,8 +16,16 @@ from ..agent_memory.data_structures import (
 from ..agent_memory.conversation_memory import ConversationMemory
 from ..agent_memory.query_memory import QueryMemory
 from ..agent_memory.entity_extractor import EntityExtractor
+from ..agent_memory.llm_entity_extractor import LLMEntityExtractor
 
 from ..agent_core.agent_actions.action import Action
+from ..agent_core.agent_actions import (
+    AnswerByItselfAction,
+    ClarifyAction,
+    UseToolAction,
+    StopAction,
+)
+from ..agent_core.agent_actions.need_context_action import NeedContextAction
 
 from ..llm_adapters.llm_base import LLMBase
 from ..tool_management.tool_executor import ToolExecutor
@@ -28,6 +36,7 @@ from ..confidence_assessment.confidence_assessor import ConfidenceAssessor
 from ..confidence_assessment.parameter_assessor import ParameterAssessor
 
 from ..agent_prompts.prompt_registry import PromptRegistry
+from ..agent_prompts.defaults_prompts import DEFAULT_PROMPTS
 from ..agent_prompts.prompts_ids import PromptId
 
 from .logger import logger
@@ -52,6 +61,78 @@ from .mixins.prompting import PromptingMixin
 ParameterAssessorFactory = Callable[[LLMBase, PromptRegistry], ParameterAssessor]
 ParameterAssessorLike = Union[ParameterAssessor, ParameterAssessorFactory]
 
+ToolInput = Union[Mapping[str, AgentTool], Iterable[AgentTool]]
+LLMFactory = Callable[[str], LLMBase]
+
+
+def _normalise_tools(tools: ToolInput) -> Dict[str, AgentTool]:
+    if isinstance(tools, Mapping):
+        out = dict(tools)
+    else:
+        out: Dict[str, AgentTool] = {}
+        for t in tools:
+            if t is None:
+                continue
+            name = getattr(t, "name", None)
+            name = name() if callable(name) else name
+            name = str(name or "").strip()
+            if not name:
+                raise ValueError(f"Tool {type(t).__name__} has no .name")
+            if name in out:
+                raise ValueError(f"Duplicate tool name: {name!r}")
+            out[name] = t
+
+    if not out:
+        raise ValueError("ReActAgent requires at least one tool")
+    return out
+
+
+def _default_prompt_registry() -> PromptRegistry:
+    return PromptRegistry(_defaults=dict(DEFAULT_PROMPTS))
+
+
+def _default_step_actions() -> List[Action]:
+    return [
+        NeedContextAction(),
+        AnswerByItselfAction(),
+        ClarifyAction(),
+        UseToolAction(),
+        StopAction(),
+    ]
+
+
+def _default_low_conf_actions() -> List[Action]:
+    return [
+        NeedContextAction(),
+        UseToolAction(),
+        AnswerByItselfAction(),
+        StopAction(),
+        ClarifyAction(),
+    ]
+
+
+def _default_parameter_assessor_factories() -> List[ParameterAssessorFactory]:
+    """
+    Optional defaults: if modules exist, they will be used.
+    If not, the agent remains fully usable without assessors.
+    """
+    import importlib
+
+    factories: List[ParameterAssessorFactory] = []
+    candidates = [
+        ("my_react_agent.confidence_assessment.entity_alignment_assessor", "EntityAlignmentAssessor"),
+        ("my_react_agent.confidence_assessment.answer_quality_assessor", "AnswerQualityAssessor"),
+        ("my_react_agent.confidence_assessment.answer_realism_assessor", "AnswerRealismAssessor"),
+    ]
+    for mod_path, cls_name in candidates:
+        try:
+            mod = importlib.import_module(mod_path)
+            cls = getattr(mod, cls_name)
+            factories.append(lambda llm, prompts, _cls=cls: _cls(llm, prompts=prompts))
+        except Exception:
+            pass
+    return factories
+
 
 class ReActAgent(
     FormattingMixin,
@@ -59,6 +140,66 @@ class ReActAgent(
     ExecutionMixin,
     PromptingMixin,
 ):
+
+    @classmethod
+    def create(
+        cls,
+        llm: Union[LLMBase, LLMFactory],
+        tools: ToolInput,
+        *,
+        prompts: Optional[PromptRegistry] = None,
+        max_steps: int = None,
+        entity_store: Optional[Any] = None,
+        config: Optional[ReActAgentConfig] = None,
+        step_actions: Optional[List[Action]] = None,
+        low_conf_actions: Optional[List[Action]] = None,
+        parameter_assessors: Optional[List[ParameterAssessorLike]] = None,
+        action_handlers: Optional[Dict[str, ActionHandler]] = None,
+        enable_default_assessors: bool = True,
+        role_overrides: Optional[Dict[str, LLMBase]] = None,
+        entity_extractor: Optional[EntityExtractor] = None,
+    ) -> "ReActAgent":
+        tools_dict = _normalise_tools(tools)
+
+        prompts = prompts or _default_prompt_registry()
+
+        def pick(role: str) -> LLMBase:
+            if role_overrides and role in role_overrides and role_overrides[role] is not None:
+                return role_overrides[role]
+            if callable(llm):
+                return llm(role)
+            return llm
+
+        planner_llm = pick("planner_llm")
+        summariser_llm = pick("summariser_llm")
+        confidence_llm = pick("confidence_llm")
+        refiner_llm = pick("refiner_llm")
+
+        if entity_extractor is None:
+            entity_extractor = LLMEntityExtractor(summariser_llm, prompts=prompts)
+
+        step_actions = step_actions if step_actions is not None else _default_step_actions()
+        low_conf_actions = low_conf_actions if low_conf_actions is not None else _default_low_conf_actions()
+
+        if parameter_assessors is None and enable_default_assessors:
+            parameter_assessors = _default_parameter_assessor_factories()
+
+        return cls(
+            planner_llm=planner_llm,
+            summariser_llm=summariser_llm,
+            confidence_llm=confidence_llm,
+            entity_extractor=entity_extractor,
+            refiner_llm=refiner_llm,
+            tools=tools_dict,
+            prompts=prompts,
+            max_steps=max_steps,
+            entity_store=entity_store,
+            config=config,
+            step_actions=step_actions,
+            low_conf_actions=low_conf_actions,
+            parameter_assessors=parameter_assessors,
+            action_handlers=action_handlers,
+        )
 
     def __init__(
         self,

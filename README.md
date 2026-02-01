@@ -68,9 +68,6 @@ Use this project when you care most about:
 
 ---
 
-### From PyPI
-pip install my-react-agent
-
 ## License
 MIT
 
@@ -78,7 +75,7 @@ MIT
 - Python 3.10+
 - Ollama (local LLM runtime)
 
-## From PIP
+### From PyPI
 pip install my-react-agent
 
 ## From Source
