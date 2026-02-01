@@ -86,22 +86,29 @@ pip install git+https://git01lab.cs.univie.ac.at/zhaniyaa77/my-react-agent.git
 - https://ollama.com/download
 
 #### Pull a model (example used below: llama3):
-ollama pull llama3
+ollama pull llama3:8b
 
 ## Quickstart
 
 To run the agent you need two things:
 1. At least one tool (otherwise the agent will show error)
 2. An LLM model (so the agent can reason and decide when/how to use tools)
-This example uses a minimal tool called multiplier that multiplies two numbers. 
 
-- A tool should contain methods for refiner to get structured input. The tool also defines a regex (refiner_input_regex) to validate refined inputs before execution. This helps prevent accidental tool calls on malformed strings and keeps behavior predictable. 
+This example uses a minimal tool called **multiplier** that multiplies two numbers. 
 
-The refiner is a prompt-based step that converts natural language into the exact format the tool expects. 
-That's why in these example you can run not just "4*5" query but also "calculate 4*5"/"what is 4 times 5?"/"multiply 4 and 5".
+- A tool should contain methods for refiner to get structured input. The tool also defines a regex (refiner_input_regex) to validate refined inputs before execution. This helps prevent accidental tool calls on malformed strings and keeps behavior predictable. The **refiner** is a prompt-based step that converts natural language into the exact format the tool expects. 
 
-- Pull the model used in this example:
-ollama pull llama3:8b
+That's why in these example you can run not just **4*5** query but also **calculate 4*5/what is 4 times 5?/multiply 4 and 5**.
+
+#### How the agent decides to call the tool
+- The planner LLM sees each tool’s:
+1. name
+2. description
+
+- To make a tool easier to select:
+1. Use a very specific description
+2. Provide strict refiner_instructions and refiner_input_regex
+3. Keep the input format simple 
 
 ```python
 from __future__ import annotations
@@ -690,262 +697,6 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 ```
-
-## Adding a Custom Tool
-
-In `my-react-agent`, a **tool** is any component that implements the `AgentTool` interface:
-
-- **Input**: a single `str` (`tool_input`)
-- **Output**: an `Evidence` object (structured, traceable, timestamped)
-
-Tools are executed through a single boundary (`ToolExecutor`) and are typically triggered by the `USE_TOOL` action (via `UseToolAction`).
-
-This section shows how to add a new tool: a **tiny calculator** that reads an image from disk and returns structured evidence.
-
-```python
-from __future__ import annotations
-
-"""
-What this does:
-1) Define a Tool class implementing AgentTool
-2) Register it in `tools = {...}`
-3) Run ReActAgent so the planner can pick USE_TOOL and call tool
-
-Prereqs:
-- Ollama installed + running
-- Pull model:  ollama pull gemma3:4b
-
-Run:
-    python main_custom_tool_demo.py
-
-Try:
-    "Compute 2+2"
-    "What is (23*7) - 5?"
-    "Use the calculator to do 2^10"
-"""
-
-import importlib
-import logging
-import sys
-from datetime import datetime
-from logging.handlers import RotatingFileHandler
-from pathlib import Path
-from typing import Dict, List, Optional
-
-import ollama
-
-from my_react_agent.llm_adapters.llm_base import LLMBase
-from my_react_agent.agent_prompts.prompt_registry import PromptRegistry
-from my_react_agent.agent_prompts.defaults_prompts import DEFAULT_PROMPTS
-
-from my_react_agent.agent_core.agent_actions import (
-    AnswerByItselfAction,
-    ClarifyAction,
-    UseToolAction,
-    StopAction,
-)
-from my_react_agent.agent_core.agent_actions.need_context_action import NeedContextAction
-
-from my_react_agent.agent_heart.react_agent import ReActAgent, ParameterAssessorFactory
-from my_react_agent.agent_memory.llm_entity_extractor import LLMEntityExtractor
-
-from my_react_agent.tool_management.tools.agent_tool import AgentTool
-from my_react_agent.agent_memory.data_structures import Evidence
-
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
-# 1) Minimal LLM adapter (Ollama -> LLMBase)
-class OllamaGemmaLLM(LLMBase):
-    def __init__(self, model: str = "gemma3:4b", temperature: float = 0.1):
-        self.model = model
-        self.temperature = temperature
-
-    def generate(self, prompt: str, **kwargs) -> str:
-        response = ollama.generate(
-            model=self.model,
-            prompt=prompt,
-            options={
-                "temperature": self.temperature,
-                "num_ctx": kwargs.get("num_ctx", 2048),
-                "stop": kwargs.get("stop", ["<|endoftext|>"]),
-            },
-        )
-        return response["response"]
-
-
-# 2) The Custom Tool 
-class TinyCalculatorTool(AgentTool):
-    """
-    - This uses eval() for demo simplicity — do NOT use eval in production.
-      For production, copy Safe AST calculator from QuickStart instead.
-    """
-
-    @property
-    def name(self) -> str:
-        # This is the string the planner will put into decision.tool_name
-        return "tiny_calculator"
-
-    @property
-    def description(self) -> str:
-        # The planner sees this and decides whether to pick USE_TOOL + this tool.
-        return "Evaluates a simple math expression like 2+2 or (3*7)-1. Input should be just the expression."
-
-    # ToolQueryRefiner hints (optional but helps the planner/refiner a lot)
-    @property
-    def refiner_instructions(self) -> str:
-        return "Return ONLY the math expression. No words. Examples: 2+2 ; (23*7)-5 ; 2**10"
-
-    @property
-    def refiner_input_format(self) -> str:
-        return "<math expression>"
-
-    @property
-    def refiner_input_regex(self) -> Optional[str]:
-        # Keep it simple: numbers, whitespace, and common operators/parentheses.
-        return r"^[0-9\.\s\+\-\*\/\(\)\%]+$"
-
-    def execute(self, input: str) -> Evidence:
-        # 1–2 line demo logic (again: eval is for demo only)
-        result = eval((input or "").replace("^", "**"), {"__builtins__": {}})  # noqa: S307
-
-        return Evidence(
-            tool=self.name,
-            content=f"{input} = {result}",
-            url=None,
-            extracted={"expression": input, "result": result},
-            as_of=datetime.utcnow(),
-            confidence=0.9,
-        )
-
-
-# 3) Helpers (logging, prompts, assessors)
-def configure_logging(level: int = logging.INFO) -> None:
-    log_path = Path(__file__).resolve().with_name("agent.log")
-    handlers = [
-        logging.StreamHandler(sys.stdout),
-        RotatingFileHandler(str(log_path), maxBytes=2_000_000, backupCount=2, encoding="utf-8"),
-    ]
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-        datefmt="%H:%M:%S",
-        handlers=handlers,
-        force=True,
-    )
-
-
-def create_prompt_registry() -> PromptRegistry:
-    return PromptRegistry(_defaults=dict(DEFAULT_PROMPTS))
-
-
-def create_parameter_assessor_factories() -> List[ParameterAssessorFactory]:
-    factories: List[ParameterAssessorFactory] = []
-    candidates = [
-        ("my_react_agent.confidence_assessment.entity_alignment_assessor", "EntityAlignmentAssessor"),
-        ("my_react_agent.confidence_assessment.answer_quality_assessor", "AnswerQualityAssessor"),
-        ("my_react_agent.confidence_assessment.answer_realism_assessor", "AnswerRealismAssessor"),
-    ]
-    for mod_path, cls_name in candidates:
-        try:
-            mod = importlib.import_module(mod_path)
-            cls = getattr(mod, cls_name)
-            factories.append(lambda llm, prompts, _cls=cls: _cls(llm, prompts=prompts))
-            logger.info("enabled assessor %s.%s", mod_path, cls_name)
-        except Exception as e:
-            logger.info("assessor %s.%s not available (skipping): %r", mod_path, cls_name, e)
-    return factories
-
-
-# 4) Main: register tool -> build agent -> chat
-def main() -> None:
-    configure_logging(logging.INFO)
-
-    prompts = create_prompt_registry()
-
-    # THIS IS THE ENTIRE "REGISTER TOOL" STEP:
-    tools: Dict[str, object] = {
-        "tiny_calculator": TinyCalculatorTool(),
-        # add more tools here later from eva
-    }
-
-    llms = {
-        "planner_llm": OllamaGemmaLLM(),
-        "summariser_llm": OllamaGemmaLLM(),
-        "confidence_llm": OllamaGemmaLLM(),
-        "refiner_llm": OllamaGemmaLLM(),
-    }
-
-    entity_extractor = LLMEntityExtractor(llms["summariser_llm"], prompts=prompts)
-
-    step_actions = [
-        NeedContextAction(),
-        AnswerByItselfAction(),
-        ClarifyAction(),
-        UseToolAction(),  # <-- this is what triggers tool usage
-        StopAction(),
-    ]
-
-    low_conf_actions = [
-        NeedContextAction(),
-        UseToolAction(),
-        AnswerByItselfAction(),
-        StopAction(),
-        ClarifyAction(),
-    ]
-
-    parameter_assessors = create_parameter_assessor_factories()
-
-    agent = ReActAgent(
-        planner_llm=llms["planner_llm"],
-        summariser_llm=llms["summariser_llm"],
-        confidence_llm=llms["confidence_llm"],
-        refiner_llm=llms["refiner_llm"],
-        entity_extractor=entity_extractor,
-        tools=tools,
-        prompts=prompts,
-        max_steps=8,
-        step_actions=step_actions,
-        low_conf_actions=low_conf_actions,
-        parameter_assessors=parameter_assessors,
-    )
-
-    print(
-        "\nCustom Tool Demo: tiny_calculator\n"
-        "Try:\n"
-        "  Compute 2+2\n"
-        "  What is (23*7) - 5?\n"
-        "  Use the calculator to do 2^10\n"
-        "Type 'exit' to quit.\n"
-    )
-
-    while True:
-        user_input = input("You: ").strip()
-        if user_input.lower() in {"exit", "quit"}:
-            print("Goodbye!")
-            break
-        if not user_input:
-            continue
-
-        reply = agent.handle(user_input)
-        print(f"{reply}\n")
-
-
-if __name__ == "__main__":
-    main()
-```
-
-#### How the agent decides to call the tool
-- The planner LLM sees each tool’s:
-1. name
-2. description
-- When it chooses USE_TOOL, it outputs a tool_name and the refiner produces tool_input.
-
-- To make a tool easier to select:
-1. Use a very specific description
-2. Provide strict refiner_instructions and refiner_input_regex
-3. Keep the input format simple (path:... question:...)
 
 
 ## Adding a Custom ParameterAssessor (Example: `RelevanceAssessor`)
