@@ -178,7 +178,7 @@ class PlanningMixin(TextUtilsMixin):
             f'"action":"one of: {allowed_names_str}",'
             '"tool_name":"<tool name or empty>",'
             '"tool_input":"<tool input or empty>",'
-            '"message":"<optional message>'
+            '"message":"<optional message>"'
             "}"
         )
 
@@ -203,7 +203,7 @@ class PlanningMixin(TextUtilsMixin):
         action = self._sanitise_to_text(data.get("action", "")).upper()
         tool_name = self._sanitise_to_text(data.get("tool_name", ""))
 
-        step_task_raw = data.get("step's_task", "")
+        step_task_raw = data.get("step_task", "")
         step_task = self._sanitise_to_text(step_task_raw)
         tool_input = self._sanitise_to_text(data.get("tool_input", ""))
         if step_task:

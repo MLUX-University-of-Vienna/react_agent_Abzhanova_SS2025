@@ -94,10 +94,57 @@ To run the agent you need two things:
 1. At least one tool (otherwise the agent will show error)
 2. An LLM model (so the agent can reason and decide when/how to use tools)
 
+#### How to define a tool
 This example uses a minimal tool called **multiplier** that multiplies two numbers. 
 
-- A tool should contain methods for refiner to get structured input. The tool also defines a regex (refiner_input_regex) to validate refined inputs before execution. This helps prevent accidental tool calls on malformed strings and keeps behavior predictable. The **refiner** is a prompt-based step that converts natural language into the exact format the tool expects. 
+A tool must be a subclass AgentTool and implement:
+- **name**: unique string ID
+- **description**: shown to the model in the tool catalog
+- **refiner_instructions**: how the model should format tool input
+The **refiner** is a prompt-based step that converts natural language into the exact format the tool expects. 
 That's why in these example you can run not just **4*5** query but also **calculate 4*5/what is 4 times 5?/multiply 4 and 5**.
+- **refiner_input_format**: human-readable format spec
+- **refiner_input_regex**: validation regex for tool input
+- **execute(input: str) -> Evidence**: execute and return evidence (tool name, content(tool result), extracted format of tool result, time, confidence)
+
+```python
+from my_react_agent.agent_memory.data_structures import Evidence
+from my_react_agent.tool_management.tools.agent_tool import AgentTool
+
+from datetime import datetime, timezone
+
+class MultiplicationTool(AgentTool):
+    @property
+    def name(self) -> str:
+        return "multiplier"
+
+    @property
+    def description(self) -> str:
+        return "Multiplies two numbers. Tool input must be '<number>*<number>' (e.g. 45*7)."
+
+    @property
+    def refiner_instructions(self) -> str:
+        return "Output ONLY '<number>*<number>' (example: 45*7). No words."
+
+    @property
+    def refiner_input_format(self) -> str:
+        return "<number>*<number>"
+
+    @property
+    def refiner_input_regex(self) -> Optional[str]:
+        return r"^\s*-?\d+(\.\d+)?\s*\*\s*-?\d+(\.\d+)?\s*$"
+
+    def execute(self, input: str) -> Evidence:
+        left, right = input.split("*", 1)
+        result = float(left) * float(right)
+        return Evidence(
+            tool=self.name,
+            content=f"{left.strip()} * {right.strip()} = {result}",
+            extracted={"expression": input, "result": result},
+            as_of=datetime.now(timezone.utc),
+            confidence=0.95,
+        )
+```
 
 - How the agent decides to call the tool
 The planner LLM sees each tool’s:
@@ -109,6 +156,8 @@ To make a tool **easier to select**:
 2. Provide strict refiner_instructions and refiner_input_regex
 3. Keep the input format simple 
 
+Initialise the agent with the tool from example and any model (here we use "llama3:8b" model):
+
 ```python
 from __future__ import annotations
 
@@ -118,70 +167,14 @@ from typing import Optional
 
 import ollama
 
-from my_react_agent.agent_memory.data_structures import Evidence
-from my_react_agent.tool_management.tools.agent_tool import AgentTool
-
 from my_react_agent.agent_heart.react_agent import ReActAgent
-
-
-class MultiplicationTool(AgentTool):
-    @property
-    def name(self) -> str:
-        return "multiplier"
-
-    @property
-    def description(self) -> str:
-        return "Multiplies two numbers. Tool input must be '<number>*<number>' (e.g. 45*7)."
-
-    # Refiner contract: makes tool input predictable
-    @property
-    def refiner_instructions(self) -> str:
-        return "Output ONLY '<number>*<number>' (example: 45*7). No words."
-
-    @property
-    def refiner_input_format(self) -> str:
-        return "<number>*<number>"
-
-    @property
-    def refiner_input_regex(self) -> Optional[str]:
-        # Keep it strict so the refiner can be validated before tool execution
-        return r"^\s*-?\d+(\.\d+)?\s*\*\s*-?\d+(\.\d+)?\s*$"
-
-    def execute(self, input: str) -> Evidence:
-        s = (input or "").strip()
-        try:
-            left, right = s.split("*", 1)      
-            result = float(left) * float(right)  
-
-            rendered = str(int(result)) if abs(result - round(result)) < 1e-12 else str(result)
-
-            return Evidence(
-                tool=self.name,
-                content=f"{left.strip()} * {right.strip()} = {rendered}",
-                url=None,
-                extracted={"expression": s, "result": result},
-                as_of=datetime.utcnow(),
-                confidence=0.95,
-            )
-        except Exception as e:
-            # Minimal fallback if refiner didn’t behave / user input slipped through
-            return Evidence(
-                tool=self.name,
-                content=f"Multiply failed: expected '<number>*<number>' (e.g. 45*7). Error: {e}",
-                url=None,
-                extracted={"error": True, "input": s},
-                as_of=datetime.utcnow(),
-                confidence=0.1,
-            )
-
-
 
 def main() -> None:
     tools = [MultiplicationTool()]
 
     agent = ReActAgent.create(llm="llama3:8b", tools=tools)
 
-    print("\nQuickStart: my-react-agent (minimal)\nType 'exit' to quit.\n")
+    print("\nQuickStart: my-react-agent \nType 'exit' to quit.\n")
     while True:
         q = input("You: ").strip()
         if q.lower() in {"exit", "quit"}:
@@ -309,7 +302,7 @@ def main() -> None:
   A plugin module exposes `plugin.register(ctx)` and can add tools/actions/assessors/prompts.
 
 
-## How to add a Custom Action
+## How to create and add a Custom Action
 - Adding a Custom Action (Example: **StarWarsAnswer**)
 
 - Goal: If the user asks about Star Wars (e.g. “Who is Anakin Skywalker?”), the agent should include the phrase "May the Force be with you!" in the final answer.
@@ -484,11 +477,8 @@ if __name__ == "__main__":
 ```
 
 
-## Adding a Custom ParameterAssessor (Example: `RelevanceAssessor`)
-
-This section shows how to add a new **ParameterAssessor** to the confidence-gating system.
-
-> **Goal:** add a `RelevanceAssessor` that scores whether a step’s answer/tool-result is **relevant to the step task** (not just plausible).
+## How to create and add a Custom ParameterAssessor
+> **Goal:** add a `MathExpressionAssessor` that scores how correct is a result of a calculation.
 
 In `my-react-agent`, confidence gating works like this:
 
@@ -501,200 +491,102 @@ In `my-react-agent`, confidence gating works like this:
 
 So, to add an assessor you must:
 
-- Create a new class that extends `ParameterAssessor`
-- Provide a `PromptId` + default `PromptTemplate` (so users don’t need to edit the framework)
-- Return a `ParameterRating(name, score, reason, meta)`
-- Register it (either directly, via factory list, or via plugin)
-
----
+1. Create a prompt template
+Define a prompt template. It must contain only the variables listed in required_vars.
+Example: an assessor that checks if an answer is concise and directly answers the question:
 
 ```python
-from __future__ import annotations
-
-"""
-What this file does:
-1) Define a new prompt_id string (we use a string constant for the demo).
-2) Define a PromptTemplate for that id.
-3) Implement RelevanceAssessor(ParameterAssessor) using that prompt.
-4) Build ReActAgent with parameter_assessors=[RelevanceAssessor(...)].
-5) Run and see confidence gating include assessor.
-
-Run:
-    python main_custom_assessor_demo.py
-
-Try:
-    Ask something that tempts the model to drift:
-      "Tell me about Apple, but focus only on iPhones."
-      "What's the capital of Germany? (Answer ONLY with the city.)"
-"""
-
-import importlib
-import json
-import logging
-import re
-import sys
-from datetime import datetime
-from logging.handlers import RotatingFileHandler
-from pathlib import Path
-from typing import Dict, List, Optional, Any
-
-import ollama
-
-from my_react_agent.llm_adapters.llm_base import LLMBase
-
-from my_react_agent.agent_prompts.prompt_registry import PromptRegistry
 from my_react_agent.agent_prompts.prompt_template import PromptTemplate
-from my_react_agent.agent_prompts.defaults_prompts import DEFAULT_PROMPTS
 
-from my_react_agent.agent_core.agent_actions import (
-    AnswerByItselfAction,
-    ClarifyAction,
-    UseToolAction,
-    StopAction,
+CONF_MATH_EXPR_PROMPT_ID = "confidence_math_expression_min"
+
+CONF_MATH_EXPR_TEMPLATE = PromptTemplate(
+    text=(
+        "You are checking the correctness of a math result.\n"
+        "Given the QUESTION and the ANSWER, decide if the calculation is correct.\n\n"
+        "Rules:\n"
+        "- score=1.0 if the math in ANSWER matches the correct computation.\n"
+        "- score=0.0 if it is incorrect.\n"
+        "- If the QUESTION/ANSWER do not contain a clear computable expression/result, score=0.5.\n"
+        "- reason must be short.\n"
+        "- computed should be the correct result if you can compute it, otherwise \"unknown\".\n\n"
+        "QUESTION:\n{question}\n\n"
+        "ANSWER:\n{answer}\n\n"
+        "Return ONLY JSON.\n"
+        "JSON:"
+    ),
+    required_vars={"question", "answer"},
+    description="Minimal math correctness scoring",
+    version="2",
 )
-from my_react_agent.agent_core.agent_actions.need_context_action import NeedContextAction
 
-from my_react_agent.agent_heart.react_agent import ReActAgent, ParameterAssessorFactory
-from my_react_agent.agent_memory.llm_entity_extractor import LLMEntityExtractor
+```
 
-from my_react_agent.tool_management.tools.agent_tool import AgentTool
-from my_react_agent.agent_memory.data_structures import Evidence
+2. Define a JSON Schema (recommended)
+**Why**: If the model outputs extra text (e.g., “Here is the response: {...}”), strict json.loads() fails, your assessor falls back, and the agent may repeatedly retry the step.
 
+Use a schema that exactly matches what you want back:
+
+```python
+MATH_ASSESS_SCHEMA: Dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "score": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "reason": {"type": "string"},
+        "computed": {"type": "string"},
+    },
+    "required": ["score", "reason", "computed"],
+    "additionalProperties": False,
+}
+```
+
+3. Implement the **ParameterAssessor** subclass
+Your assessor must implement:
+- name
+- prompt_id
+- default_prompt_template()
+- assess(...) -> ParameterRating
+
+```python
 from my_react_agent.confidence_assessment.parameter_assessor import ParameterAssessor
 from my_react_agent.confidence_assessment.models import ParameterRating
 
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
-
-# 1) LLM adapter (Ollama -> LLMBase)
-class OllamaGemmaLLM(LLMBase):
-    def __init__(self, model: str = "gemma3:4b", temperature: float = 0.1):
-        self.model = model
-        self.temperature = temperature
-
-    def generate(self, prompt: str, **kwargs) -> str:
-        response = ollama.generate(
-            model=self.model,
-            prompt=prompt,
-            options={
-                "temperature": self.temperature,
-                "num_ctx": kwargs.get("num_ctx", 2048),
-                "stop": kwargs.get("stop", ["<|endoftext|>"]),
-            },
-        )
-        return response["response"]
-
-
-# 2) Minimal tool (agent requires at least one tool)
-class EchoTool(AgentTool):
+class MathExpressionAssessor(ParameterAssessor):
     @property
     def name(self) -> str:
-        return "echo"
-
-    @property
-    def description(self) -> str:
-        return "Echoes back the input text (demo tool)."
-
-    def execute(self, input: str) -> Evidence:
-        return Evidence(
-            tool=self.name,
-            content=f"ECHO: {input}",
-            url=None,
-            extracted={"echo": input},
-            as_of=datetime.utcnow(),
-            confidence=0.9,
-        )
-
-
-# 3) Custom assessor prompt_id + default PromptTemplate (no core edits)
-# In core, you'd add PromptId.CONF_RELEVANCE. For a one-file demo we just use a string.
-CONF_RELEVANCE_PROMPT_ID = "confidence_relevance"
-
-CONF_RELEVANCE_TEMPLATE = PromptTemplate(
-    text=(
-        "You are an evaluator for a QA system.\n\n"
-        "Task: Score how RELEVANT the ANSWER is to the QUESTION.\n"
-        "Relevance means: it directly addresses the asked topic and does not drift.\n\n"
-        "Scoring:\n"
-        "- 1.0 = clearly relevant and directly addresses the question.\n"
-        "- 0.5 = partially relevant; some matches but some drift.\n"
-        "- 0.0 = irrelevant / wrong subject / does not address the question.\n\n"
-        "Output rules (CRITICAL):\n"
-        "- Output MUST be a SINGLE JSON object and NOTHING else.\n"
-        "- Keys MUST be exactly: score, reason.\n"
-        "- score MUST be one of: 0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0\n"
-        "- reason MUST be <= 20 words.\n"
-        "- Do NOT include any extra keys.\n\n"
-        "Schema example: {schema_example}\n\n"
-        "{knowledge_cutoff_block}{result_timestamp_block}"
-        "QUESTION:\n{question}\n\n"
-        "ANSWER:\n{answer}\n\n"
-        "JSON:"
-    ),
-    required_vars={
-        "schema_example",
-        "knowledge_cutoff_block",
-        "result_timestamp_block",
-        "question",
-        "answer",
-    },
-    description="Assess relevance of an answer to the question",
-    version="1",
-)
-
-
-# 4) Custom ParameterAssessor: RelevanceAssessor
-_JSON_OBJ_RE = re.compile(r"\{.*\}", flags=re.S)
-
-
-def _extract_json_object(raw: str) -> dict:
-    if not raw:
-        return {}
-    m = _JSON_OBJ_RE.search(raw)
-    if not m:
-        return {}
-    try:
-        return json.loads(m.group(0))
-    except Exception:
-        return {}
-
-
-def _coerce_score(v: Any, fallback: float) -> float:
-    try:
-        f = float(v)
-    except Exception:
-        return fallback
-    # clamp to [0, 1]
-    if f < 0.0:
-        f = 0.0
-    if f > 1.0:
-        f = 1.0
-    # snap to 1 decimal to match prompt contract (optional)
-    return float(f"{f:.1f}")
-
-
-class RelevanceAssessor(ParameterAssessor):
-    """
-    Minimal assessor:
-    - name: key in ratings dict ("relevance")
-    - prompt_id: a string (in core you'd use PromptId.CONF_RELEVANCE.value)
-    - default_prompt_template(): ships its own prompt so PromptRegistry can register it
-    - assess(): returns ParameterRating(name, score, reason, meta)
-    """
-
-    @property
-    def name(self) -> str:
-        return "relevance"
+        return "math_expression_correctness"
 
     @property
     def prompt_id(self) -> str:
-        return CONF_RELEVANCE_PROMPT_ID
+        return CONF_MATH_EXPR_PROMPT_ID
 
     def default_prompt_template(self) -> PromptTemplate:
-        # This is what ParameterAssessor.__init__ will register into prompts if missing.
-        return CONF_RELEVANCE_TEMPLATE
+        return CONF_MATH_EXPR_TEMPLATE
+
+    def _parse_json_strict_or_extract(self, raw: str) -> Dict[str, Any]:
+        """
+        Even with schema, keep a tiny safety net:
+        if the model ever wraps JSON with extra text, extract first {...}.
+        """
+        s = (raw or "").strip()
+        if not s:
+            return {}
+
+        try:
+            obj = json.loads(s)
+            return obj if isinstance(obj, dict) else {}
+        except Exception:
+            pass
+
+        m = re.search(r"\{.*\}", s, flags=re.DOTALL)
+        if m:
+            try:
+                obj = json.loads(m.group(0))
+                return obj if isinstance(obj, dict) else {}
+            except Exception:
+                return {}
+
+        return {}
 
     def assess(
         self,
@@ -705,161 +597,213 @@ class RelevanceAssessor(ParameterAssessor):
         knowledge_cutoff: Optional[str] = None,
         result_timestamp: Optional[str] = None,
     ) -> ParameterRating:
-        schema = {"score": 0.0, "reason": "short"}
-
         prompt = self._render_prompt(
-            schema_example=json.dumps(schema),
-            knowledge_cutoff_block=(knowledge_cutoff or ""),
-            result_timestamp_block=(result_timestamp or ""),
-            question=query_text,
-            answer=answer_text,
+            question=(query_text or "").strip(),
+            answer=(answer_text or "").strip(),
         )
 
-        raw = (self.llm.generate(prompt) or "").strip()
-        obj = _extract_json_object(raw)
+        raw = (self.llm.generate(prompt, format=MATH_ASSESS_SCHEMA) or "").strip()
 
-        score = _coerce_score(obj.get("score", self.default_fallback), self.default_fallback)
-        reason = str(obj.get("reason", "fallback")).strip()[:120] or "fallback"
+        obj = self._parse_json_strict_or_extract(raw)
+
+        try:
+            score = float(obj.get("score", self.default_fallback))
+        except Exception:
+            score = float(self.default_fallback)
+
+        score = max(0.0, min(1.0, score))
+
+        reason = str(obj.get("reason", "fallback")).strip()[:160] or "fallback"
+        computed = str(obj.get("computed", "")).strip()[:80]
+
+        print(f"\n[MathExpressionAssessor] score={score:.2f} computed={computed or 'unknown'} reason={reason}\n")
 
         return ParameterRating(
             name=self.name,
             score=score,
             reason=reason,
-            meta={
-                # optional flags used by ConfidenceAssessor._mean_score()
-                # "exclude_from_mean": False,
-            },
+            meta={"computed": computed} if computed else {},
+        )
+```
+
+###### Notes on assessor inputs
+Your base class calls your assessor with:
+- query_text: the step task or question text being assessed
+- answer_text: the step’s produced answer/summary
+- tool_result_text: optional raw tool output if your confidence framework passes it through
+- knowledge_cutoff and result_timestamp: optional metadata (often unused in simple assessors)
+
+4. Register the new prompt in PromptRegistry
+
+Update your create_prompts() to register the assessor prompt id and template:
+```python
+def create_prompts() -> PromptRegistry:
+    prompts = PromptRegistry(_defaults=dict(DEFAULT_PROMPTS))
+    prompts.register_default(CONF_MATH_EXPR_PROMPT_ID, CONF_MATH_EXPR_TEMPLATE)
+    return prompts
+```
+
+5. Build Agent. Pass an assessor factory into ReActAgent.create(...)
+The code expects parameter_assessors to contain either:
+- a ParameterAssessor instance, or
+- a factory (llm, prompts) -> ParameterAssessor
+
+Use a factory so the agent constructs the assessor with its confidence_llm: 
+
+```python
+from __future__ import annotations
+
+import json
+import re
+from datetime import datetime, timezone
+from typing import Any, Dict, Optional
+
+from my_react_agent.agent_heart.react_agent import ReActAgent
+from my_react_agent.agent_memory.data_structures import Evidence
+from my_react_agent.tool_management.tools.agent_tool import AgentTool
+
+from my_react_agent.confidence_assessment.parameter_assessor import ParameterAssessor
+from my_react_agent.confidence_assessment.models import ParameterRating
+
+from my_react_agent.agent_prompts.prompt_template import PromptTemplate
+from my_react_agent.agent_prompts.prompt_registry import PromptRegistry
+from my_react_agent.agent_prompts.defaults_prompts import DEFAULT_PROMPTS
+
+CONF_MATH_EXPR_PROMPT_ID = "confidence_math_expression_min"
+
+CONF_MATH_EXPR_TEMPLATE = PromptTemplate(
+    text=(
+        "You are checking the correctness of a math result.\n"
+        "Given the QUESTION and the ANSWER, decide if the calculation is correct.\n\n"
+        "Rules:\n"
+        "- score=1.0 if the math in ANSWER matches the correct computation.\n"
+        "- score=0.0 if it is incorrect.\n"
+        "- If the QUESTION/ANSWER do not contain a clear computable expression/result, score=0.5.\n"
+        "- reason must be short.\n"
+        "- computed should be the correct result if you can compute it, otherwise \"unknown\".\n\n"
+        "QUESTION:\n{question}\n\n"
+        "ANSWER:\n{answer}\n\n"
+        "Return ONLY JSON.\n"
+        "JSON:"
+    ),
+    required_vars={"question", "answer"},
+    description="Minimal math correctness scoring",
+    version="2",
+)
+
+MATH_ASSESS_SCHEMA: Dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "score": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+        "reason": {"type": "string"},
+        "computed": {"type": "string"},
+    },
+    "required": ["score", "reason", "computed"],
+    "additionalProperties": False,
+}
+
+
+class MathExpressionAssessor(ParameterAssessor):
+    @property
+    def name(self) -> str:
+        return "math_expression_correctness"
+
+    @property
+    def prompt_id(self) -> str:
+        return CONF_MATH_EXPR_PROMPT_ID
+
+    def default_prompt_template(self) -> PromptTemplate:
+        return CONF_MATH_EXPR_TEMPLATE
+
+    def _parse_json_strict_or_extract(self, raw: str) -> Dict[str, Any]:
+        s = (raw or "").strip()
+        if not s:
+            return {}
+
+        try:
+            obj = json.loads(s)
+            return obj if isinstance(obj, dict) else {}
+        except Exception:
+            pass
+
+        m = re.search(r"\{.*\}", s, flags=re.DOTALL)
+        if m:
+            try:
+                obj = json.loads(m.group(0))
+                return obj if isinstance(obj, dict) else {}
+            except Exception:
+                return {}
+
+        return {}
+
+    def assess(
+        self,
+        *,
+        query_text: str,
+        answer_text: str,
+        tool_result_text: str = "",
+        knowledge_cutoff: Optional[str] = None,
+        result_timestamp: Optional[str] = None,
+    ) -> ParameterRating:
+        prompt = self._render_prompt(
+            question=(query_text or "").strip(),
+            answer=(answer_text or "").strip(),
+        )
+        raw = (self.llm.generate(prompt, format=MATH_ASSESS_SCHEMA) or "").strip()
+
+        obj = self._parse_json_strict_or_extract(raw)
+
+        try:
+            score = float(obj.get("score", self.default_fallback))
+        except Exception:
+            score = float(self.default_fallback)
+
+        score = max(0.0, min(1.0, score))
+
+        reason = str(obj.get("reason", "fallback")).strip()[:160] or "fallback"
+        computed = str(obj.get("computed", "")).strip()[:80]
+
+        print(f"\n[MathExpressionAssessor] score={score:.2f} computed={computed or 'unknown'} reason={reason}\n")
+
+        return ParameterRating(
+            name=self.name,
+            score=score,
+            reason=reason,
+            meta={"computed": computed} if computed else {},
         )
 
-# 5) Logging / prompts / optional factory assessors
-def configure_logging(level: int = logging.INFO) -> None:
-    log_path = Path(__file__).resolve().with_name("agent.log")
-    handlers = [
-        logging.StreamHandler(sys.stdout),
-        RotatingFileHandler(str(log_path), maxBytes=2_000_000, backupCount=2, encoding="utf-8"),
-    ]
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-        datefmt="%H:%M:%S",
-        handlers=handlers,
-        force=True,
-    )
-
-
-def create_prompt_registry() -> PromptRegistry:
-    # Start from normal defaults
+def create_prompts() -> PromptRegistry:
     prompts = PromptRegistry(_defaults=dict(DEFAULT_PROMPTS))
-
-    # OPTIONAL BUT VERY CLEAR:
-    # We also register the new prompt_id here so users see it explicitly.
-    # (Even if you remove this, ParameterAssessor.__init__ will register it anyway.)
-    prompts.register_default(CONF_RELEVANCE_PROMPT_ID, CONF_RELEVANCE_TEMPLATE)
-
+    prompts.register_default(CONF_MATH_EXPR_PROMPT_ID, CONF_MATH_EXPR_TEMPLATE)
     return prompts
 
 
-def create_parameter_assessor_factories() -> List[ParameterAssessorFactory]:
-    """
-    Keep existing dynamic imports (optional). This demo focuses on the custom assessor.
-    """
-    factories: List[ParameterAssessorFactory] = []
-    candidates = [
-        ("my_react_agent.confidence_assessment.entity_alignment_assessor", "EntityAlignmentAssessor"),
-        ("my_react_agent.confidence_assessment.answer_quality_assessor", "AnswerQualityAssessor"),
-        ("my_react_agent.confidence_assessment.answer_realism_assessor", "AnswerRealismAssessor"),
-    ]
-    for mod_path, cls_name in candidates:
-        try:
-            mod = importlib.import_module(mod_path)
-            cls = getattr(mod, cls_name)
-            factories.append(lambda llm, prompts, _cls=cls: _cls(llm, prompts=prompts))
-            logger.info("enabled assessor %s.%s", mod_path, cls_name)
-        except Exception as e:
-            logger.info("assessor %s.%s not available (skipping): %r", mod_path, cls_name, e)
-    return factories
-
-
-# 6) Main
-
 def main() -> None:
-    configure_logging(logging.INFO)
+    # Pass Multiplication tool from the Quickstart
+    tools = [MultiplicationTool()]
+    prompts = create_prompts()
 
-    prompts = create_prompt_registry()
+    # factory so ReActAgent.create() uses its confidence_llm to build the assessor
+    def math_assessor_factory(llm, prompts):
+        return MathExpressionAssessor(llm=llm, prompts=prompts)
 
-    tools: Dict[str, object] = {"echo": EchoTool()}
-
-    llms = {
-        "planner_llm": OllamaGemmaLLM(),
-        "summariser_llm": OllamaGemmaLLM(),
-        "confidence_llm": OllamaGemmaLLM(),
-        "refiner_llm": OllamaGemmaLLM(),
-    }
-
-    entity_extractor = LLMEntityExtractor(llms["summariser_llm"], prompts=prompts)
-
-    step_actions = [
-        NeedContextAction(),
-        AnswerByItselfAction(),
-        ClarifyAction(),
-        UseToolAction(),
-        StopAction(),
-    ]
-
-    low_conf_actions = [
-        NeedContextAction(),
-        UseToolAction(),
-        AnswerByItselfAction(),
-        StopAction(),
-        ClarifyAction(),
-    ]
-
-    # Register assessors:
-    # - existing (optional)
-    existing_factories = create_parameter_assessor_factories()
-
-    # - custom (the point of this demo)
-    custom_assessor = RelevanceAssessor(llms["confidence_llm"], prompts=prompts)
-
-    # Mix factories + instances (ReActAgent.__init__ supports both)
-    parameter_assessors: List[object] = []
-    parameter_assessors.extend(existing_factories)
-    parameter_assessors.append(custom_assessor)
-
-    agent = ReActAgent(
-        planner_llm=llms["planner_llm"],
-        summariser_llm=llms["summariser_llm"],
-        confidence_llm=llms["confidence_llm"],
-        refiner_llm=llms["refiner_llm"],
-        entity_extractor=entity_extractor,
+    agent = ReActAgent.create(
+        llm="llama3:8b",
         tools=tools,
         prompts=prompts,
-        max_steps=8,
-        step_actions=step_actions,
-        low_conf_actions=low_conf_actions,
-        parameter_assessors=parameter_assessors,  # <-- includes RelevanceAssessor
+        parameter_assessors=[math_assessor_factory],
     )
 
-    print(
-        "\nCustom Assessor Demo: RelevanceAssessor\n"
-        f"- prompt_id: {CONF_RELEVANCE_PROMPT_ID}\n"
-        "- assessor name: relevance\n\n"
-        "Try:\n"
-        "  What's the capital of Germany? (Answer ONLY with the city.)\n"
-        "  Tell me about Apple, but focus only on iPhones.\n"
-        "Type 'exit' to quit.\n"
-    )
+    print("\nMinimal Assessor Demo (math_expression_correctness + multiplier). Type 'exit' to quit.\n")
 
     while True:
-        user_input = input("You: ").strip()
-        if user_input.lower() in {"exit", "quit"}:
-            print("Goodbye!")
+        q = input("You: ").strip()
+        if q.lower() in {"exit", "quit"}:
             break
-        if not user_input:
+        if not q:
             continue
-
-        reply = agent.handle(user_input)
-        print(f"{reply}\n")
+        print(agent.handle(q))
+        print()
 
 
 if __name__ == "__main__":

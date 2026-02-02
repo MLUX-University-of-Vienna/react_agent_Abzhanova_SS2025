@@ -24,6 +24,7 @@ class DefaultOllamaLLM(LLMBase):
             response = ollama.generate(
                 model=self.model,
                 prompt=prompt,
+                format=kwargs.get("format"),
                 options={
                     "temperature": kwargs.get("temperature", self.temperature),
                     "num_ctx": kwargs.get("num_ctx", self.num_ctx),
