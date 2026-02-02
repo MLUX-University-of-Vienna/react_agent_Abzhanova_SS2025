@@ -1,36 +1,24 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 import os
 import sys
-import time
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Callable
+from typing import Any, Dict, List, Callable
 
-try:
-    from langchain.agents import initialize_agent
-except Exception as e:
-    raise RuntimeError(
-        "Could not import initialize_agent from langchain.agents. "
-        "Please install/upgrade langchain."
-    ) from e
-
-try:
-    from langchain.tools import Tool
-except Exception:
-    from langchain_core.tools import Tool 
+from evaluation.tools.calculator_tool import CalculatorTool
+from evaluation.tools.vector_search_tool import VectorSearchTool
+from evaluation.tools.web_search_tool import DuckDuckGoTool
+from evaluation.tools.wikipedia_tool import WikipediaTool
+from langchain.agents import create_agent
+from langchain_core.tools import Tool
 
 try:
     from langchain_ollama import ChatOllama
 except Exception:
     from langchain_community.chat_models import ChatOllama  
 
-from evaluation.tools.calculator_tool import CalculatorTool
-from evaluation.tools.vector_search_tool import VectorSearchTool
-from evaluation.tools.web_search_tool import DuckDuckGoTool
-from evaluation.tools.wikipedia_tool import WikipediaTool
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +57,11 @@ def configure_logging(level: int = logging.INFO) -> None:
     ):
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
-    logger.info("[configure_logging] level=%s log_file=%s", logging.getLevelName(level), log_path)
+    logger.info(
+        "[configure_logging] level=%s log_file=%s",
+        logging.getLevelName(level),
+        log_path,
+    )
 
 
 def create_my_tools() -> Dict[str, object]:
@@ -104,7 +96,6 @@ def create_my_tools() -> Dict[str, object]:
     return tools
 
 
-# input normalisation
 def _to_text(x: Any) -> str:
     if isinstance(x, str):
         return x
@@ -115,16 +106,8 @@ def _to_text(x: Any) -> str:
         return str(x)
     return str(x)
 
-def wrap_tools_for_langchain(
-    my_tools: Dict[str, object],
-) -> List[Tool]:
-    """
-    1) TOOL ALIASES (case + common names):
-        register both "Wikipedia" and "wikipedia" (same function).
 
-    2) NORMALISED INPUT:
-       Prevents errors when LangChain sends dict/object inputs.
-    """
+def wrap_tools_for_langchain(my_tools: Dict[str, object]) -> List[Tool]:
 
     wiki_tool_obj = my_tools.get("wikipedia")
     web_tool_obj = my_tools.get("web_search")
@@ -138,6 +121,7 @@ def wrap_tools_for_langchain(
             text = _to_text(tool_input).strip()
 
             ev = tool_obj.execute(text)
+
             content = getattr(ev, "content", None)
             if content is None:
                 content = str(ev)
@@ -158,96 +142,86 @@ def wrap_tools_for_langchain(
         lc_tools.append(Tool(name="Wikipedia", func=wiki_fn, description="Look up facts on Wikipedia."))
         lc_tools.append(Tool(name="wikipedia", func=wiki_fn, description="(alias) Look up facts on Wikipedia."))
 
+    # Web search (aliases)  <-- important: include this tool!
+    if web_tool_obj is not None:
+        web_fn = make_execute_fn(web_tool_obj)
+        lc_tools.append(Tool(name="WebSearch", func=web_fn, description="Search the web for information."))
+        lc_tools.append(Tool(name="web_search", func=web_fn, description="(alias) Search the web for information."))
+
     # Calculator (aliases)
     if calc_tool_obj is not None:
         calc_fn = make_execute_fn(calc_tool_obj)
         lc_tools.append(Tool(name="Calculator", func=calc_fn, description="Do math calculations."))
         lc_tools.append(Tool(name="calculator", func=calc_fn, description="(alias) Do math calculations."))
 
-    # Vector search (aliases) 
+    # Vector search (aliases)
     if vec_tool_obj is not None:
         vec_fn = make_execute_fn(vec_tool_obj)
         lc_tools.append(Tool(name="VectorSearch", func=vec_fn, description="Search your local documents."))
         lc_tools.append(Tool(name="vector_search", func=vec_fn, description="(alias) Search your local documents."))
 
-    logger.info("[wrap_tools_for_langchain] count=%d", len(lc_tools))
+    logger.info("[wrap_tools_for_langchain] count=%d names=%s", len(lc_tools), [t.name for t in lc_tools])
     return lc_tools
 
 
 def create_ollama_llm() -> ChatOllama:
-    model = "llama3:8b"
-    base_url = "http://localhost:11434"
-    timeout = 120 
+    model = os.getenv("OLLAMA_MODEL", "qwen3:8b")
+    base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    timeout = float(os.getenv("OLLAMA_TIMEOUT", "120"))
 
-    # Avoid LangSmith noise without requiring env setup
-    os.environ.setdefault("LANGCHAIN_TRACING_V2", "false")
+    llm = ChatOllama(
+        model=model,
+        base_url=base_url,
+        timeout=timeout,
+        validate_model_on_init=True,
+        disable_streaming="tool_calling",
+    )
 
-    llm = ChatOllama(model=model, base_url=base_url, timeout=timeout)
     logger.info("[llm] ChatOllama model=%s base_url=%s timeout=%s", model, base_url, timeout)
     return llm
 
 
-async def main_async() -> None:
-    configure_logging(logging.DEBUG)
-
-    logger.info("[main] init tools")
-    my_tools = create_my_tools()
-    tools = wrap_tools_for_langchain(my_tools)
-
-    llm = create_ollama_llm()
-
-    # It uses LangChain's built-in prompt for
-    # "zero-shot-react-description" (MRKL ReAct style).
-    # handle_parsing_errors:
-    # When the model outputs text that doesn't follow:
-    #   Thought: ...
-    #   Action: ...
-    #   Action Input: ...
-    executor = initialize_agent(
-        tools=tools,
-        llm=llm,
-        agent="zero-shot-react-description",
-        verbose=True,
-        max_iterations=20,
-        handle_parsing_errors=(
-            "Your previous output was not in the required ReAct format. "
-            "You MUST respond using exactly: Thought, Action, Action Input. "
-            "Action MUST be one of the provided tool names."
-        ),
-        early_stopping_method="force", 
-    )
-
-    print(
-        "\nLangChain ReAct Agent Chat (initialize_agent + zero-shot-react-description, no custom prompt).\n"
-        "Type 'exit' or 'quit' to stop.\n"
-        f"Model: {getattr(llm, 'model', 'unknown')}\n"
-        f"Max iterations: {getattr(executor, 'max_iterations', 'unknown')} | Verbose: {getattr(executor, 'verbose', False)}\n"
-    )
+def run_chat(agent) -> None:
+    print("\nLangChain Agent Chat (create_agent).\nType 'exit' or 'quit' to stop.\n")
 
     while True:
         try:
             user_input = input("You: ").strip()
         except (EOFError, KeyboardInterrupt):
             print("\nGoodbye!")
-            break
+            return
 
         if not user_input:
             continue
         if user_input.lower() in {"exit", "quit"}:
             print("Goodbye!")
-            break
+            return
 
         try:
-            logger.info("[chat] user_len=%d", len(user_input))
-            result = executor.invoke({"input": user_input})
-            print(f"{result.get('output', '')}\n")
+            state = agent.invoke({"messages": [{"role": "user", "content": user_input}]})
+            msgs = state.get("messages", [])
+            final = msgs[-1].content if msgs else ""
+            print(f"{final}\n")
         except Exception as e:
             logger.exception("[chat] failed")
             print(f"[ERROR] {e}\n")
 
 
 def main() -> None:
-    asyncio.run(main_async())
+    configure_logging(logging.DEBUG)
+
+    my_tools = create_my_tools()
+    tools = wrap_tools_for_langchain(my_tools)
+
+    llm = create_ollama_llm()
+
+    agent = create_agent(
+        model=llm,
+        tools=tools,
+        debug=True,
+    )
+
+    run_chat(agent)
 
 
 if __name__ == "__main__":

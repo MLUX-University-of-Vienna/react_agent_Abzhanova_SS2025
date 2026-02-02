@@ -6,11 +6,14 @@ pdfminer.six>=2023.0.0
 beautifulsoup4>=4.12.0
 wikipedia>=1.4.0
 Wikipedia-API>=0.8.1
+python-docx>=1.1.0
+scikit-learn>=1.4.0
 
 # LangChain (ReAct agent + Ollama)
-langchain>=0.2.0
-langchain-community>=0.2.0
-langchain-ollama>=0.1.0
+langchain>=1.2.8,<2
+langchain-core>=1.2.8,<2
+langgraph>=1.0.7,<2
+langchain-ollama>=1.0.1,<2
 
 # LlamaIndex (ReAct agent + Ollama)
 llama-index>=0.14.0
