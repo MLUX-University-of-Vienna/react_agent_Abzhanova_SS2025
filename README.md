@@ -301,12 +301,166 @@ def main() -> None:
 - Loaded via `REACT_AGENT_PLUGINS` environment variable  
   A plugin module exposes `plugin.register(ctx)` and can add tools/actions/assessors/prompts.
 
+## Actions (Decision Catalogue)
+- An **Action** is a small “capability label” the planner LLM can choose during _decide_action_for_step(). Actions are not executed directly. They are advertised to the LLM in the “actions catalog” (via Action.to_catalog_entry()). So you can think of an Action as a “menu item” shown to the planner.
+
+##### Action interface
+All actions implement the same base class:
+- `name`: unique identifier used by the planner and handlers
+- `default_instructions`: default guidance shown to the planner
+- `default_when_to_pick`: default “selection rule” shown to the planner
+
+This project keeps actions **simple and overridable**: you can tweak *when* an action is chosen (via `when_to_pick`) and *how* it should behave (via `instructions`) **without editing the agent core**. Overrides are done by setting:
+- `action.instructions = "..."` or `action.set_instructions("...")`
+- `action.when_to_pick = "..."` or `action.set_when_to_pick("...")`
+To revert to defaults:
+- action.clear_overrides()
+
+##### Built-in Actions
+- `NeedContextAction`  
+  Resolves missing entities / pronouns using the entity extractor and memory.
+- `UseToolAction`  
+  Invokes exactly one tool (via the tool execution boundary), stores observation/evidence.
+- `AnswerByItselfAction`  
+  Uses LLM-only knowledge for stable facts (no tools).
+- `ClarifyAction`  
+  Asks a single clarification question when the step is underspecified.
+- `StopAction`  
+  Terminates after repeated failures or user cancellation.
+
+##### How to override an Action
+There are two supported ways to change behavior:
+1. **Override an instance** (recommended): easiest and does not require subclassing
+2. **Subclass**: changes defaults globally for that new class
+
+**Option A** — Override an existing action instance (recommended)
+This is the simplest approach: keep the built-in action class, but modify `when_to_pick` and/or `instructions` on the instance you pass to the agent.
+
+```python
+from my_react_agent.agent_heart.react_agent import ReActAgent
+from my_react_agent.agent_core.agent_actions import (
+    AnswerByItselfAction, ClarifyAction, UseToolAction, StopAction
+)
+from my_react_agent.agent_core.agent_actions.need_context_action import NeedContextAction
+
+# Create an action instance
+answer = AnswerByItselfAction()
+
+# Override the selection rule shown to the planner LLM
+answer.when_to_pick = (
+    "Prefer ANSWER_BY_ITSELF for conceptual/definition questions and timeless facts.\n"
+    "Avoid if the step needs current/live info, private data, or tool-only capabilities."
+)
+
+# (Optional) override the instructions too
+# answer.instructions = "Answer in 1-2 sentences. No speculation."
+
+step_actions = [
+    NeedContextAction(),
+    answer,              # <-- overridden instance used here
+    ClarifyAction(),
+    UseToolAction(),
+    StopAction(),
+]
+
+agent = ReActAgent.create(
+    llm="llama3:8b",
+    tools=[...],
+    step_actions=step_actions,
+)
+
+```
+Why this works:
+- the planner sees an “action catalogue” built from Action.to_catalog_entry()
+- to_catalog_entry() uses action.when_to_pick and action.instructions
+- your overrides become part of the prompt, influencing action selection
+
+**Option B** — Subclass an Action (change defaults)
+If you want a reusable action that always has a new default, subclass and override default_when_to_pick / default_instructions.
+
+```python
+from my_react_agent.agent_core.agent_actions import AnswerByItselfAction
+
+class AnswerByItselfMoreOften(AnswerByItselfAction):
+    @property
+    def default_when_to_pick(self) -> str:
+        return (
+            "Prefer ANSWER_BY_ITSELF for conceptual questions, definitions, and timeless explanations.\n"
+            "Avoid if it needs current/live facts or tool-only capabilities."
+        )
+
+step_actions = [
+    NeedContextAction(),
+    AnswerByItselfMoreOften(),
+    ClarifyAction(),
+    UseToolAction(),
+    StopAction(),
+]
+```
+
+##### Full runnable example (override when_to_pick)
+> **Goal:** Override existing action's (AnswerByItselfAction) when_to_pick method.
+```python
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import Optional, List
+
+from my_react_agent.agent_heart.react_agent import ReActAgent
+from my_react_agent.agent_memory.data_structures import Evidence
+from my_react_agent.tool_management.tools.agent_tool import AgentTool
+
+from my_react_agent.agent_core.agent_actions import (
+    AnswerByItselfAction,
+    ClarifyAction,
+    UseToolAction,
+    StopAction,
+)
+from my_react_agent.agent_core.agent_actions.need_context_action import NeedContextAction
+
+
+def main() -> None:
+    # Add MultiplicationTool from QuickStart
+    tools = [MultiplicationTool()]
+
+    answer = AnswerByItselfAction()
+    answer.when_to_pick = (
+        "Prefer ANSWER_BY_ITSELF for conceptual/definition questions and timeless facts.\n"
+        "Avoid if the step needs current/live info, private data, or tool-only capabilities."
+    )
+
+    step_actions: List[object] = [
+        NeedContextAction(),
+        answer,              # <- overridden instance used here
+        ClarifyAction(),
+        UseToolAction(),
+        StopAction(),
+    ]
+
+    agent = ReActAgent.create(
+        llm="llama3:8b",     
+        tools=tools,
+        step_actions=step_actions,
+    )
+
+    print("\nReAct Agent (custom when_to_pick). Type 'exit' to quit.\n")
+    while True:
+        q = input("You: ").strip()
+        if q.lower() in {"exit", "quit"}:
+            break
+        if not q:
+            continue
+        print(agent.handle(q))
+        print()
+
+
+if __name__ == "__main__":
+    main()
+```
+
 
 ## How to create and add a Custom Action
 > **Goal:** If the user asks about Star Wars (e.g. “Who is Anakin Skywalker?”), the agent should include the phrase "May the Force be with you!" in the final answer.
-
-#### What an Action is 
-- An **Action** is a small “capability label” the planner LLM can choose during _decide_action_for_step(). Actions are not executed directly. They are advertised to the LLM in the “actions catalog” (via Action.to_catalog_entry()). So you can think of an Action as a “menu item” shown to the planner.
 
 - Your new class should provide:
 1. name (string): must be stable and unique
