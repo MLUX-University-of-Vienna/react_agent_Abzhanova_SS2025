@@ -228,6 +228,18 @@ class ReActAgent(
         entity_extractor: Optional[EntityExtractor] = None,
         llm_factory: Optional[LLMFactoryBuilder] = None,
     ) -> "ReActAgent":
+        if isinstance(llm, Mapping) and not isinstance(llm, str):
+            base_llm, inferred_overrides = _coerce_role_overrides(llm, llm_factory=llm_factory)
+
+            merged: Dict[str, LLMBase] = {}
+            if inferred_overrides:
+                merged.update(inferred_overrides)
+            if role_overrides:
+                merged.update(role_overrides)
+
+            llm = base_llm
+            role_overrides = merged or None
+
         tools_dict = _normalise_tools(tools)
 
         prompts = prompts or _default_prompt_registry()

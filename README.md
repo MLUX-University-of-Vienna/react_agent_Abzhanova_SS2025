@@ -82,10 +82,10 @@ pip install my-react-agent
 pip install git+https://git01lab.cs.univie.ac.at/zhaniyaa77/my-react-agent.git
 
 ## Install Ollama
-#### Download and install Ollama:
+##### Download and install Ollama:
 - https://ollama.com/download
 
-#### Pull a model (example used below: llama3):
+##### Pull a model (example used below: llama3):
 ollama pull llama3:8b
 
 ## Quickstart
@@ -95,17 +95,17 @@ To run the agent you need two things:
 2. An LLM model (so the agent can reason and decide when/how to use tools)
 
 #### How to define a tool
-This example uses a minimal tool called **multiplier** that multiplies two numbers. 
+> **Goal:** Implement tool called multiplier that multiplies two numbers.
 
 A tool must be a subclass AgentTool and implement:
 - **name**: unique string ID
 - **description**: shown to the model in the tool catalog
 - **refiner_instructions**: how the model should format tool input
-The **refiner** is a prompt-based step that converts natural language into the exact format the tool expects. 
-That's why in these example you can run not just **4*5** query but also **calculate 4*5/what is 4 times 5?/multiply 4 and 5**.
 - **refiner_input_format**: human-readable format spec
 - **refiner_input_regex**: validation regex for tool input
 - **execute(input: str) -> Evidence**: execute and return evidence (tool name, content(tool result), extracted format of tool result, time, confidence)
+
+These methods are important for **refiner** taht is a prompt-based step that converts natural language into the exact format the tool expects. That's why in these example you can run not just **4*5** query but also **calculate 4*5/what is 4 times 5?/multiply 4 and 5**.
 
 ```python
 from my_react_agent.agent_memory.data_structures import Evidence
@@ -147,7 +147,7 @@ class MultiplicationTool(AgentTool):
 ```
 
 **How the agent decides to call the tool**
-- The planner LLM sees each tool’s:
+The planner LLM sees each tool’s:
 1. name
 2. description
 
@@ -156,7 +156,7 @@ class MultiplicationTool(AgentTool):
 2. Provide strict refiner_instructions and refiner_input_regex
 3. Keep the input format simple 
 
-Initialise the agent with the tool from example and any model (here we use "llama3:8b" model):
+To run the agent with these tool: initialise the agent with the tool from example and any model (here we use "llama3:8b" model):
 
 ```python
 from __future__ import annotations
@@ -284,7 +284,7 @@ def main() -> None:
   Examples: `EntityAlignmentAssessor`, `AnswerQualityAssessor`, `AnswerRealismAssessor`.
 
 **Tool input refinement (ToolQueryRefiner)**
-- Before calling a tool, the agent converts current step's task into the exact tool input string expected by that tool. This is what prevents “LLM prose” from being fed into tools and standardizes tool calls.
+- Before calling a tool, the agent converts current step's task into the exact tool input string expected by that tool. This is what prevents “LLM prose” from being fed into tools and standardises tool calls.
 - ToolQueryRefiner relies on AgentTool exposing a “refiner contract”. Tools can implement these properties to constrain/refine the model’s output:
 `refiner_instructions`: str — tool-specific rules (“Return a normal search query…”, etc.)
 `refiner_input_format`: str — short format spec for expected input
@@ -341,8 +341,7 @@ override should_assess_result(...) to return False
 - `StarWarsAnswerAction` advertises a new action the agent can choose: "STARWARS_ANSWER".
 - `StarWarsAnswerHandler` runs the prompt to answer the question based on LLM's knowledge and returns a final answer immediately, without calling any tools.
 
-
-- How to use:
+How to use:
 1. Register the handler in `action_handlers` with the same key as Action.name.
 2. Include `StarWarsAnswerAction()` in `step_actions` (and also in `low_conf_actions` - low-confidence retry decision).
 
@@ -842,351 +841,107 @@ if __name__ == "__main__":
     main()
 ```
 
-## Adding a Custom LLM Adapter (New `LLMBase` Implementation)
+## LLM Adapters
+LLM adapters are the thin integration layer between the agent and any model backend. The agent only depends on one interface:
+- `LLMBase.generate(prompt: str, **kwargs) -> str`
+This keeps the agent provider-agnostic (Ollama today, something else tomorrow) and lets models being swapped without touching the planning/tool/action logic.
 
-`my-react-agent` treats LLMs as **pluggable adapters**. Anything that implements the `LLMBase` interface can power the agent’s roles:
+##### Why adapters exist
+- **Decouple providers**: the agent never imports Ollama/OpenAI/etc. directly.
+- **Centralise backend params**: `temperature`, `stop`, `num_ctx`, and optionally `format` (for structured JSON outputs).
+- **Enable testing**: you can inject a fake adapter that returns deterministic outputs.
 
-- **planner_llm** → creates step plans
-- **summariser_llm** → synthesises step summaries + final answer
-- **confidence_llm** → evaluates step quality/confidence (for retries)
-- **refiner_llm** → turns (question + step task) into strict tool input
+##### LLM roles in this project
+`ReActAgent` uses four LLM roles so each part of the loop can have different defaults (especially temperature):
 
-This section shows how to implement a new adapter and wire it into the agent, with an **Ollama DeepSeek** example.
+- `planner_llm`  
+  Decides how to proceed for each step (e.g. `USE_TOOL`, `CLARIFY`, `ANSWER_BY_ITSELF`, `NEED_CONTEXT`, `STOP`) and may split a question into steps.
 
----
+- `summariser_llm`  
+  Produces the final user-facing answer and step synthesis. Also used by default for entity extraction (`LLMEntityExtractor`).
 
-#### Step 1 - The `LLMBase` contract
+- `confidence_llm`  
+  Evaluates step result quality via `ConfidenceAssessor` / `ParameterAssessors` and can trigger retries on low-confidence steps.
 
-All adapters must implement:
+- `refiner_llm`  
+  Converts natural-language tool intent into strict tool inputs (often regex-constrained).
+
+##### How adapters are selected
+You can pass the `llm` into `ReActAgent.create()` in three common ways:
+1. **Single model string** (uses default factory, builds per-role LLMs):
+
+```python
+agent = ReActAgent.create(llm="llama3:8b", tools=tools)
+```
+
+2. A **single adapter instance** (same adapter for all roles):
+
+```python
+agent = ReActAgent.create(llm=DefaultOllamaLLM("llama3:8b"), tools=tools)
+```
+
+3. A **role factory** (best for role-specific adapters):
+
+```python
+agent = ReActAgent.create(llm=lambda role: DefaultOllamaLLM("llama3:8b"), tools=tools)
+```
+You can also pass a role mapping (override specific roles) if needed.
+
+4. Role mapping (recommended for different models per role)
+Provide a dict with "default" and optional per-role overrides:
 
 ```python
 from __future__ import annotations
 
-"""
-What this shows:
-1) Implement a new LLMBase adapter class (OllamaChatLLM) in ONE file
-2) Use real Ollama models per role:
-   - planner/summariser: deepseek-r1:8b
-   - confidence/refiner: qwen2.5:3b
-3) Run a tiny agent with one tool (CalculatorTool)
+from datetime import datetime, timezone
+from typing import Optional, Dict
 
-Prereqs:
-- Ollama installed + running: https://ollama.com
-- Pull models:
-    ollama pull deepseek-r1:8b
-    ollama pull qwen2.5:3b
+from my_react_agent.agent_heart.react_agent import ReActAgent
+from my_react_agent.agent_memory.data_structures import Evidence
+from my_react_agent.tool_management.tools.agent_tool import AgentTool
 
-Run:
-    python main_custom_llm_adapter_demo.py
-
-Try:
-    What's the capital of Germany?
-    Compute (23*7)-5
-    2^10
-"""
-
-import ast
-import importlib
-import logging
-import operator as op
-import re
-import sys
-from datetime import datetime
-from logging.handlers import RotatingFileHandler
-from pathlib import Path
-from typing import Dict, List, Optional
-
-import ollama
-
-from my_react_agent.llm_adapters.llm_base import LLMBase
 from my_react_agent.agent_prompts.prompt_registry import PromptRegistry
 from my_react_agent.agent_prompts.defaults_prompts import DEFAULT_PROMPTS
 
-from my_react_agent.agent_heart.react_agent import ReActAgent, ParameterAssessorFactory
-from my_react_agent.agent_memory.llm_entity_extractor import LLMEntityExtractor
 
-from my_react_agent.agent_core.agent_actions import (
-    AnswerByItselfAction,
-    ClarifyAction,
-    UseToolAction,
-    StopAction,
-)
-from my_react_agent.agent_core.agent_actions.need_context_action import NeedContextAction
+def create_role_models() -> Dict[str, str]:
+    return {
+        "default": "llama3:8b",
+        "planner_llm": "llama3:8b",
+        "summariser_llm": "mistral",
+        "confidence_llm": "deepseek-r1:8b",
+        "refiner_llm": "gemma3:4b",
+    }
 
-from my_react_agent.tool_management.tools.agent_tool import AgentTool
-from my_react_agent.agent_memory.data_structures import Evidence
-
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
-# 1) NEW LLMBase adapter (this is the “custom adapter” you’re teaching)
-
-class OllamaChatLLM(LLMBase):
-    """
-    Custom LLM adapter that satisfies LLMBase and talks to Ollama using the Chat API.
-
-    Contract:
-    - generate(prompt: str, **kwargs) -> str
-    - accept kwargs (temperature/num_ctx/stop) so agent roles can override
-    - raise a clear exception if Ollama is unreachable
-    """
-
-    def __init__(self, model: str, temperature: float = 0.1):
-        self.model = model
-        self.temperature = float(temperature)
-
-    def generate(self, prompt: str, **kwargs) -> str:
-        temp = float(kwargs.get("temperature", self.temperature))
-        num_ctx = int(kwargs.get("num_ctx", 2048))
-        stop = kwargs.get("stop", ["<|endoftext|>"])
-
-        try:
-            # Ollama chat endpoint: treat "prompt" as one user message
-            resp = ollama.chat(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                options={
-                    "temperature": temp,
-                    "num_ctx": num_ctx,
-                    "stop": stop,
-                },
-            )
-
-            # ollama.chat returns an object/dict with message content
-            msg = resp.get("message", {}) if isinstance(resp, dict) else getattr(resp, "message", None)
-            content = msg.get("content", "") if isinstance(msg, dict) else getattr(msg, "content", "")
-            return (content or "").strip()
-
-        except Exception as e:
-            raise ConnectionError(
-                f"Ollama error calling model={self.model!r}. "
-                f"Is Ollama running on localhost:11434 and is the model pulled? "
-                f"Original error: {e!r}"
-            )
-
-
-# 2) Minimal calculator tool (keep it simple; adapter demo is the point)
-_ALLOWED_BIN_OPS = {
-    ast.Add: op.add,
-    ast.Sub: op.sub,
-    ast.Mult: op.mul,
-    ast.Div: op.truediv,
-    ast.FloorDiv: op.floordiv,
-    ast.Mod: op.mod,
-    ast.Pow: op.pow,
-}
-_ALLOWED_UNARY_OPS = {ast.UAdd: op.pos, ast.USub: op.neg}
-
-
-def _safe_eval(expr: str) -> float:
-    node = ast.parse(expr, mode="eval")
-
-    def _eval(n: ast.AST):
-        if isinstance(n, ast.Expression):
-            return _eval(n.body)
-        if isinstance(n, ast.Constant) and isinstance(n.value, (int, float)):
-            return n.value
-        if isinstance(n, ast.BinOp) and type(n.op) in _ALLOWED_BIN_OPS:
-            return _ALLOWED_BIN_OPS[type(n.op)](_eval(n.left), _eval(n.right))
-        if isinstance(n, ast.UnaryOp) and type(n.op) in _ALLOWED_UNARY_OPS:
-            return _ALLOWED_UNARY_OPS[type(n.op)](_eval(n.operand))
-        raise ValueError(f"Unsupported expression element: {type(n).__name__}")
-
-    return float(_eval(node))
-
-
-def _extract_math_expression(text: str) -> Optional[str]:
-    if not text:
-        return None
-    m = re.search(r"[0-9\.\s\+\-\*\/\(\)\%\^]+", text.strip())
-    if not m:
-        return None
-    return (m.group(0).strip().replace("^", "**")) or None
-
-
-class CalculatorTool(AgentTool):
-    @property
-    def name(self) -> str:
-        return "calculator"
-
-    @property
-    def description(self) -> str:
-        return "Safely evaluates basic arithmetic expressions."
-
-    @property
-    def refiner_instructions(self) -> str:
-        return "Output only a valid arithmetic expression using digits and operators + - * / // % ** ( ) ."
-
-    @property
-    def refiner_input_format(self) -> str:
-        return "<arithmetic expression>"
-
-    @property
-    def refiner_input_regex(self) -> Optional[str]:
-        return r"^[0-9\.\s\+\-\*\/\(\)\%\^]+$"
-
-    def execute(self, input: str) -> Evidence:
-        expr = _extract_math_expression(input or "")
-        if not expr:
-            return Evidence(
-                tool=self.name,
-                content="Calculator failed: no arithmetic expression found.",
-                url=None,
-                extracted={"error": True},
-                as_of=datetime.utcnow(),
-                confidence=0.2,
-            )
-
-        try:
-            value = _safe_eval(expr)
-            rendered = str(int(value)) if abs(value - round(value)) < 1e-12 else str(value)
-            return Evidence(
-                tool=self.name,
-                content=f"{expr} = {rendered}",
-                url=None,
-                extracted={"expression": expr, "result": value},
-                as_of=datetime.utcnow(),
-                confidence=0.95,
-            )
-        except Exception as e:
-            return Evidence(
-                tool=self.name,
-                content=f"Calculator failed: {e}",
-                url=None,
-                extracted={"error": True, "message": str(e), "expression": expr},
-                as_of=datetime.utcnow(),
-                confidence=0.1,
-            )
-
-
-# 3) Logging + prompts + optional assessor factories (unchanged patterns)
-
-def configure_logging(level: int = logging.INFO) -> None:
-    log_path = Path(__file__).resolve().with_name("agent.log")
-    handlers = [
-        logging.StreamHandler(sys.stdout),
-        RotatingFileHandler(str(log_path), maxBytes=2_000_000, backupCount=2, encoding="utf-8"),
-    ]
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-        datefmt="%H:%M:%S",
-        handlers=handlers,
-        force=True,
-    )
-
-
-def create_prompt_registry() -> PromptRegistry:
-    return PromptRegistry(_defaults=dict(DEFAULT_PROMPTS))
-
-
-def create_parameter_assessor_factories() -> List[ParameterAssessorFactory]:
-    """
-    Same optional pattern you already use: build assessors if modules exist.
-    If they don't, agent still runs (just less confidence gating).
-    """
-    factories: List[ParameterAssessorFactory] = []
-    candidates = [
-        ("my_react_agent.confidence_assessment.entity_alignment_assessor", "EntityAlignmentAssessor"),
-        ("my_react_agent.confidence_assessment.answer_quality_assessor", "AnswerQualityAssessor"),
-        ("my_react_agent.confidence_assessment.answer_realism_assessor", "AnswerRealismAssessor"),
-    ]
-    for mod_path, cls_name in candidates:
-        try:
-            mod = importlib.import_module(mod_path)
-            cls = getattr(mod, cls_name)
-            factories.append(lambda llm, prompts, _cls=cls: _cls(llm, prompts=prompts))
-            logger.info("enabled assessor %s.%s", mod_path, cls_name)
-        except Exception as e:
-            logger.info("assessor %s.%s not available (skipping): %r", mod_path, cls_name, e)
-    return factories
-
-
-# 4) Main: wire custom adapter into the agent (this is the “how to use it” part)
 
 def main() -> None:
-    configure_logging(logging.INFO)
-    prompts = create_prompt_registry()
+    # Add MultiplicationTool from QuickStart
+    tools = [MultiplicationTool()]
 
-    tools: Dict[str, object] = {"calculator": CalculatorTool()}
-
-    # Mix models per role (common in practice)
-    planner_llm = OllamaChatLLM(model="deepseek-r1:8b", temperature=0.2)
-    summariser_llm = OllamaChatLLM(model="deepseek-r1:8b", temperature=0.1)
-    confidence_llm = OllamaChatLLM(model="qwen2.5:3b", temperature=0.0)
-    refiner_llm = OllamaChatLLM(model="qwen2.5:3b", temperature=0.0)
-
-    entity_extractor = LLMEntityExtractor(summariser_llm, prompts=prompts)
-
-    step_actions = [
-        NeedContextAction(),
-        AnswerByItselfAction(),
-        ClarifyAction(),
-        UseToolAction(),
-        StopAction(),
-    ]
-    low_conf_actions = [
-        NeedContextAction(),
-        UseToolAction(),
-        AnswerByItselfAction(),
-        StopAction(),
-        ClarifyAction(),
-    ]
-
-    parameter_assessors = create_parameter_assessor_factories()
-
-    agent = ReActAgent(
-        planner_llm=planner_llm,
-        summariser_llm=summariser_llm,
-        confidence_llm=confidence_llm,
-        refiner_llm=refiner_llm,
-        entity_extractor=entity_extractor,
+    agent = ReActAgent.create(
+        llm=create_role_models(),   
         tools=tools,
-        prompts=prompts,
-        max_steps=8,
-        step_actions=step_actions,
-        low_conf_actions=low_conf_actions,
-        parameter_assessors=parameter_assessors,
     )
 
-    # show exactly what's configured at runtime
-    used_assessors = []
-    try:
-        used_assessors = [
-            type(a).__name__
-            for a in (getattr(getattr(agent, "confidence_assessor", None), "parameter_assessors", []) or [])
-        ]
-    except Exception:
-        used_assessors = []
-
-    print(
-        "\nCustom LLM Adapter Demo (LLMBase)\n"
-        f"- planner/summariser: deepseek-r1:8b\n"
-        f"- confidence/refiner: qwen2.5:3b\n"
-        f"- confidence assessors: {used_assessors or ['(none loaded)']}\n"
-        "\nTry:\n"
-        "  What's the capital of Germany?\n"
-        "  Compute (23*7)-5\n"
-        "  2^10\n"
-        "Type 'exit' to quit.\n"
-    )
-
+    print("\nReAct Agent (4-role models). Type 'exit' to quit.\n")
     while True:
-        user_input = input("You: ").strip()
-        if user_input.lower() in {"exit", "quit"}:
-            print("Goodbye!")
+        q = input("You: ").strip()
+        if q.lower() in {"exit", "quit"}:
             break
-        if not user_input:
+        if not q:
             continue
-        reply = agent.handle(user_input)
-        print(f"{reply}\n")
+        print(agent.handle(q))
+        print()
 
 
 if __name__ == "__main__":
     main()
 ```
 
-You can mix different models per role (common in practice):
-- larger model for planning/summarisation
-- cheaper/faster model for refinement/confidence
+**Don't forget to pull models:**
+ollama pull llama3:8b
+ollama pull mistral
+ollama pull deepseek-r1:8b
+ollama pull gemma3:4b
+
+
