@@ -75,7 +75,7 @@ MIT
 - Python 3.10+
 - Ollama (local LLM runtime)
 
-### From PyPI
+## From PyPI
 pip install my-react-agent
 
 ## From Source
@@ -146,12 +146,12 @@ class MultiplicationTool(AgentTool):
         )
 ```
 
-- How the agent decides to call the tool
-The planner LLM sees each tool’s:
+**How the agent decides to call the tool**
+- The planner LLM sees each tool’s:
 1. name
 2. description
 
-To make a tool **easier to select**:
+**To make a tool easier to select**:
 1. Use a very specific description
 2. Provide strict refiner_instructions and refiner_input_regex
 3. Keep the input format simple 
@@ -303,16 +303,48 @@ def main() -> None:
 
 
 ## How to create and add a Custom Action
-- Adding a Custom Action (Example: **StarWarsAnswer**)
+> **Goal:** If the user asks about Star Wars (e.g. “Who is Anakin Skywalker?”), the agent should include the phrase "May the Force be with you!" in the final answer.
 
-- Goal: If the user asks about Star Wars (e.g. “Who is Anakin Skywalker?”), the agent should include the phrase "May the Force be with you!" in the final answer.
+#### What an Action is 
+- An **Action** is a small “capability label” the planner LLM can choose during _decide_action_for_step(). Actions are not executed directly. They are advertised to the LLM in the “actions catalog” (via Action.to_catalog_entry()). So you can think of an Action as a “menu item” shown to the planner.
 
+- Your new class should provide:
+1. name (string): must be stable and unique
+2. default_when_to_pick: plain-English routing rule
+3. default_instructions: what it will do at runtime
+optional examples: short example user queries
+These fields matter because **Action.to_catalog_entry()** is what the planner sees. If they are vague, the model won’t reliably pick your action.
+
+- Practical guidance:
+1. Keep **name** short 
+2. Make **default_when_to_pick** crisp (“Pick when X and only when X”)
+3. Make **default_instructions** procedural and testable (“Return final answer immediately, do not call tools, include phrase …”)
+
+#### What an ActionHandler
+An **ActionHandler** is the concrete implementation that runs after the planner selects an action. The agent resolves **decision.action → handler = _get_handler_for_action(action_name)**:
+- If a matching handler is found in **self._action_handlers**, it runs.
+- If not found, it defaults to the **USE_TOOL** handler.
+
+**The handler must have registration key that match the action name** (uppercase and trimmed) and:
+- expose action_name matching the action name
+- implement run(ctx) and return:
+    1. a StepToolCall (or empty_tool_call() if no tool is used)
+    2. a StepResult (with final_answer, observation, etc.)
+    3. the updated Step
+Important behavior decisions:
+- If your action should finish the whole query immediately, set:
+StepResult.should_stop = True
+- If your action is deterministic or rule-based and you don’t want confidence gating to trigger retries:
+override should_assess_result(...) to return False
+
+#### In these example:
 - `StarWarsAnswerAction` advertises a new action the agent can choose: "STARWARS_ANSWER".
-- `StarWarsAnswerHandler` implements the action and returns a final answer immediately, without calling any tools.
+- `StarWarsAnswerHandler` runs the prompt to answer the question based on LLM's knowledge and returns a final answer immediately, without calling any tools.
+
 
 - How to use:
 1. Register the handler in `action_handlers` with the same key as Action.name.
-2. Include `StarWarsAnswerAction()` in `step_actions` (and also in `low_conf_actions`).
+2. Include `StarWarsAnswerAction()` in `step_actions` (and also in `low_conf_actions` - low-confidence retry decision).
 
 ```python
 from __future__ import annotations
@@ -626,8 +658,8 @@ class MathExpressionAssessor(ParameterAssessor):
         )
 ```
 
-###### Notes on assessor inputs
-Your base class calls your assessor with:
+##### Notes on assessor inputs
+Base class calls an assessor with:
 - query_text: the step task or question text being assessed
 - answer_text: the step’s produced answer/summary
 - tool_result_text: optional raw tool output if your confidence framework passes it through
@@ -635,7 +667,7 @@ Your base class calls your assessor with:
 
 4. Register the new prompt in PromptRegistry
 
-Update your create_prompts() to register the assessor prompt id and template:
+Update create_prompts() to register the assessor prompt id and template:
 ```python
 def create_prompts() -> PromptRegistry:
     prompts = PromptRegistry(_defaults=dict(DEFAULT_PROMPTS))
