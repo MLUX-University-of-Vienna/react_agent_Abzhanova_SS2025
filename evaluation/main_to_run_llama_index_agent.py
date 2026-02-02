@@ -67,7 +67,7 @@ def patch_ollama_tool_calls_none() -> None:
     Safe to keep even after upgrades (it becomes a harmless no-op).
     """
     try:
-        import ollama  # official ollama python client used internally
+        import ollama 
     except Exception:
         logger.warning("[patch] ollama python client not importable; skipping patch")
         return
