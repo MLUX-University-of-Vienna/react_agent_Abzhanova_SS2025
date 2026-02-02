@@ -5,6 +5,36 @@ It plans a multi-step solution, executes each step via actions/tools, evaluates 
 
 ---
 
+## Table of Contents
+
+- [Why this project](#why-this-project)
+  - [What you get here that’s harder to guarantee in langchainllamaindex](#what-you-get-here-thats-harder-to-guarantee-in-langchainllamaindex)
+  - [When my-react-agent is the better choice](#when-my-react-agent-is-the-better-choice)
+- [Key features](#key-features)
+- [License](#license)
+- [Requirements](#requirements)
+- [From PyPI](#from-pypi)
+- [From Source](#from-source)
+- [Install Ollama](#install-ollama)
+- [Quickstart](#quickstart)
+  - [How to define a tool](#how-to-define-a-tool)
+  - [Logger Messages Configuration](#logger-messages-configuration)
+- [Architecture (precise)](#architecture-precise)
+  - [High-level flow](#high-level-flow)
+  - [Component map (modules and responsibilities)](#component-map-modules-and-responsibilities)
+- [Prompts](#prompts)
+  - [How to add new Prompt](#how-to-add-new-prompt)
+  - [How to override existing Prompt](#how-to-override-existing-prompt)
+- [Actions (Decision Catalogue)](#actions-decision-catalogue)
+  - [Action interface](#action-interface)
+  - [Built-in Actions](#built-in-actions)
+  - [How to override an Action](#how-to-override-an-action)
+  - [How to create and add a Custom Action](#how-to-create-and-add-a-custom-action)
+- [How to create and add a Custom ParameterAssessor](#how-to-create-and-add-a-custom-parameterassessor)
+- [LLM Adapters](#llm-adapters)
+
+---
+
 ## Why this project
 
 Similar projects- LangChain and LlamaIndex are strong frameworks—but they’re optimised for *different priorities*:
@@ -1190,10 +1220,10 @@ if __name__ == "__main__":
     main()
 ```
 
-**Don't forget to pull models:**
-ollama pull llama3:8b
-ollama pull mistral
-ollama pull deepseek-r1:8b
-ollama pull gemma3:4b
+#### Don't forget to pull models:
+`ollama pull llama3:8b`
+`ollama pull mistral`
+`ollama pull deepseek-r1:8b`
+`ollama pull gemma3:4b`
 
 
