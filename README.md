@@ -32,6 +32,9 @@ It plans a multi-step solution, executes each step via actions/tools, evaluates 
   - [How to create and add a Custom Action](#how-to-create-and-add-a-custom-action)
 - [How to create and add a Custom ParameterAssessor](#how-to-create-and-add-a-custom-parameterassessor)
 - [LLM Adapters](#llm-adapters)
+  - [Why adapters exist](#why-adapters-exist)
+  - [LLM roles in this project](#llm-roles-in-this-project)
+  - [How to pass adapters](#how-to-pass-adapters)
 
 ---
 
@@ -1148,7 +1151,7 @@ This keeps the agent provider-agnostic (Ollama today, something else tomorrow) a
 - `refiner_llm`  
   Converts natural-language tool intent into strict tool inputs (often regex-constrained).
 
-##### How adapters are selected
+##### How to pass adapters
 You can pass the `llm` into `ReActAgent.create()` in three common ways:
 1. **Single model string** (uses default factory, builds per-role LLMs):
 
@@ -1167,9 +1170,8 @@ agent = ReActAgent.create(llm=DefaultOllamaLLM("llama3:8b"), tools=tools)
 ```python
 agent = ReActAgent.create(llm=lambda role: DefaultOllamaLLM("llama3:8b"), tools=tools)
 ```
-You can also pass a role mapping (override specific roles) if needed.
 
-4. Role mapping (recommended for different models per role)
+4. **Role mapping** (recommended for different models per role)
 Provide a dict with "default" and optional per-role overrides:
 
 ```python
