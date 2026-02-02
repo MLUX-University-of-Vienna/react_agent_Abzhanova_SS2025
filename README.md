@@ -955,11 +955,11 @@ def create_prompts() -> PromptRegistry:
 
 5. Build Agent. Pass an assessor factory into ReActAgent.create(...)
 
-The code expects parameter_assessors to contain either:
-- a ParameterAssessor instance, or
-- a factory (llm, prompts) -> ParameterAssessor
+The code expects **parameter_assessors** to contain either:
+- a `ParameterAssessor instance`, or
+- a `factory (llm, prompts) -> ParameterAssessor`
 
-Use a factory so the agent constructs the assessor with its confidence_llm: 
+##### Full runnable example: 
 
 ```python
 from __future__ import annotations
