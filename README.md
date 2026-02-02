@@ -301,6 +301,104 @@ def main() -> None:
 - Loaded via `REACT_AGENT_PLUGINS` environment variable  
   A plugin module exposes `plugin.register(ctx)` and can add tools/actions/assessors/prompts.
 
+## Prompts
+Prompts are small instruction templates used by the agent for planning, tool-use decisions, summarisation, and confidence checks.
+- All built-in prompts live in `my_react_agent/agent_prompts/defaults_prompts.py` as `DEFAULT_PROMPTS`.
+- Each prompt is keyed by `PromptId` (see agent_prompts/prompts_ids.py).
+- Prompts are rendered via `PromptTemplate.render()` using Python `str.format(**kwargs)`.
+
+##### How to add new Prompt
+It's shown in the example of Adding new **Parameter Assessor* below
+
+##### How to override existing Prompt
+
+**Option A** - Override the whole Prompt
+
+```python
+from __future__ import annotations
+from dataclasses import replace
+from datetime import datetime, timezone
+from typing import Optional, Set
+
+from my_react_agent.agent_heart.react_agent import ReActAgent
+from my_react_agent.agent_memory.data_structures import Evidence
+from my_react_agent.tool_management.tools.agent_tool import AgentTool
+
+from my_react_agent.agent_prompts.prompt_registry import PromptRegistry
+from my_react_agent.agent_prompts.prompt_template import PromptTemplate
+from my_react_agent.agent_prompts.defaults_prompts import DEFAULT_PROMPTS
+from my_react_agent.agent_prompts.prompts_ids import PromptId
+
+
+def build_prompts_with_override() -> PromptRegistry:
+    prompts = PromptRegistry(_defaults=dict(DEFAULT_PROMPTS))
+
+    custom_template = PromptTemplate(
+        text=(
+            "You decide if the user question should be split into multiple sequential steps.\n\n"
+            "Return true in 'separate' when ANY of these are present:\n"
+            "- the question contains multiple asks joined by 'and' / commas / bullet-like phrasing\n"
+            "- there are multiple entities to compare\n"
+            "- there are multiple time periods, calculations, or dependent sub-questions\n\n"
+            "Return false when the question is a single direct lookup or a single short explanation.\n\n"
+            "User question:\n{question}\n\n"
+            "Return STRICT JSON with this shape:\n{schema}\n\n"
+            "JSON only, no explanation:"
+        ),
+        required_vars={"question", "schema"},
+        description="(override) Decide if the question should be split into multiple steps",
+        version="override-1",
+    )
+
+    # Override the built-in prompt in place
+    prompts.set(PromptId.SHOULD_SEPARATE_QUESTION, custom_template)
+
+    return prompts
+
+
+def main() -> None:
+    # Add MultiplicationTool from QuickStart
+    tools = [MultiplicationTool()]
+
+    # Build PromptRegistry with a single override
+    prompts = build_prompts_with_override()
+
+    agent = ReActAgent.create(
+        llm="llama3:8b",
+        tools=tools,
+        prompts=prompts,  # <-- plug in your overridden prompt registry
+    )
+
+    print("\nReAct Agent (override SHOULD_SEPARATE_QUESTION). Type 'exit' to quit.\n")
+    while True:
+        q = input("You: ").strip()
+        if q.lower() in {"exit", "quit"}:
+            break
+        if not q:
+            continue
+        print(agent.handle(q))
+        print()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+**Option B** - Override the just the text of the Prompt
+This is the safest option for simple changes.
+```python
+from my_react_agent.agent_prompts.prompt_registry import PromptRegistry
+from my_react_agent.agent_prompts.defaults_prompts import DEFAULT_PROMPTS
+from my_react_agent.agent_prompts.prompts_ids import PromptId
+
+prompts = PromptRegistry(_defaults=dict(DEFAULT_PROMPTS))
+
+prompts.set_text(
+    PromptId.SHOULD_SEPARATE_QUESTION,
+    "New text here...\nUser question:\n{question}\n\nSchema:\n{schema}\nJSON only:"
+)
+```
+
 ## Actions (Decision Catalogue)
 - An **Action** is a small “capability label” the planner LLM can choose during _decide_action_for_step(). Actions are not executed directly. They are advertised to the LLM in the “actions catalog” (via Action.to_catalog_entry()). So you can think of an Action as a “menu item” shown to the planner.
 

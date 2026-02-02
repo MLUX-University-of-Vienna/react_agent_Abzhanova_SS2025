@@ -22,16 +22,27 @@ class DefaultOllamaLLM(LLMBase):
     def _normalise_format(self, fmt: FormatArg) -> Optional[Union[str, Dict[str, Any]]]:
         if fmt is None:
             return None
-
         if isinstance(fmt, dict):
             return fmt
-
-        if isinstance(fmt, str):
-            if fmt.strip().lower() == "json":
-                return "json"
-            return None
-
+        if isinstance(fmt, str) and fmt.strip().lower() == "json":
+            return "json"
         return None
+
+    def _prompt_wants_json(self, prompt: str) -> bool:
+        p = (prompt or "").lower()
+        markers = (
+            "return strict json",
+            "output strict json",
+            "return only json",
+            "output only json",
+            "single json object",
+            "json:",
+            "schema",
+            '"tool_input"',
+            '"action"',
+            '"steps"',
+        )
+        return any(m in p for m in markers)
 
     def generate(self, prompt: str, **kwargs) -> str:
         try:
@@ -41,6 +52,9 @@ class DefaultOllamaLLM(LLMBase):
 
         try:
             fmt = self._normalise_format(kwargs.get("format"))
+
+            if fmt is None and self._prompt_wants_json(prompt):
+                fmt = "json"
 
             req: Dict[str, Any] = {
                 "model": self.model,
@@ -56,6 +70,7 @@ class DefaultOllamaLLM(LLMBase):
                 req["format"] = fmt
 
             response = ollama.generate(**req)
-            return response["response"]
+            return (response.get("response") or "").strip()
+
         except Exception as e:
             raise ConnectionError(f"Ollama error: {str(e)}")

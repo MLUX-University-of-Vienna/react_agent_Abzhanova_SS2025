@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Dict, Iterable, Optional
 
+from dataclasses import replace
+
 @dataclass
 class PromptRegistry:
     _defaults: Dict[str, "PromptTemplate"]
@@ -21,6 +23,10 @@ class PromptRegistry:
         if prompt_id not in self._defaults:
             raise KeyError(f"Unknown prompt_id: {prompt_id}. Register a default first.")
         self._overrides[prompt_id] = template
+
+    def set_text(self, prompt_id: str, text: str) -> None:
+        base = self.get(prompt_id)  
+        self.set(prompt_id, replace(base, text=text))
 
     def register_default(self, prompt_id: str, template: "PromptTemplate") -> None:
         if prompt_id in self._defaults:
