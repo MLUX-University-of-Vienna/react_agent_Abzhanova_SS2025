@@ -179,17 +179,12 @@ class MultiplicationTool(AgentTool):
         )
 ```
 
-**How the agent decides to call the tool**
-The planner LLM sees each tool’s:
-1. name
-2. description
-
 **To make a tool easier to select**:
 1. Use a very specific description
 2. Provide strict refiner_instructions and refiner_input_regex
 3. Keep the input format simple 
 
-To run the agent with these tool: initialise the agent with the tool from example and any model (here we use "llama3:8b" model):
+**To run the agent with these tool**: initialise the agent with the tool from example and any model (here we use "llama3:8b" model):
 
 ```python
 from __future__ import annotations
@@ -222,7 +217,6 @@ if __name__ == "__main__":
 ```
 
 #### Logger Messages Configuration
-
 What the logging setup gives you:
 1. Shows INFO/DEBUG logs
 So you see step planning, tool refinement, retries, confidence gating, etc.
@@ -257,7 +251,6 @@ def main() -> None:
 ```
 
 ## Architecture (precise)
-
 ### High-level flow
 
 1. **Planning (planner LLM)**
@@ -279,7 +272,6 @@ def main() -> None:
    - Synthesises a final answer from step observations/evidence.
 
 ### Component map (modules and responsibilities)
-
 **Core orchestration**
 - `ReActAgent`  
   Owns the plan/execute/finalise loop, action selection, retries, and memory writes.
@@ -341,7 +333,7 @@ Prompts are small instruction templates used by the agent for planning, tool-use
 - Prompts are rendered via `PromptTemplate.render()` using Python `str.format(**kwargs)`.
 
 ##### How to add new Prompt
-It's shown in the example of Adding new **Parameter Assessor* below
+It's shown in the example of Adding new **Parameter Assessor** below
 
 ##### How to override existing Prompt
 
@@ -838,7 +830,8 @@ CONF_MATH_EXPR_TEMPLATE = PromptTemplate(
 
 ```
 
-2. Define a JSON Schema (recommended)
+2. Define a JSON Schema (recommended) 
+
 **Why**: If the model outputs extra text (e.g., “Here is the response: {...}”), strict json.loads() fails, your assessor falls back, and the agent may repeatedly retry the step.
 
 Use a schema that exactly matches what you want back:
@@ -856,7 +849,8 @@ MATH_ASSESS_SCHEMA: Dict[str, Any] = {
 }
 ```
 
-3. Implement the **ParameterAssessor** subclass
+3. Implement the **ParameterAssessor** subclass 
+
 Your assessor must implement:
 - name
 - prompt_id
@@ -960,6 +954,7 @@ def create_prompts() -> PromptRegistry:
 ```
 
 5. Build Agent. Pass an assessor factory into ReActAgent.create(...)
+
 The code expects parameter_assessors to contain either:
 - a ParameterAssessor instance, or
 - a factory (llm, prompts) -> ParameterAssessor
