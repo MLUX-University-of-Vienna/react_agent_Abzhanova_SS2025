@@ -259,7 +259,7 @@ def wrap_tools_for_llamaindex(my_tools: Dict[str, object]) -> List[FunctionTool]
 
 
 def create_llamaindex_ollama_llm() -> Ollama:
-    model = os.getenv("OLLAMA_MODEL", "llama3:8b")
+    model = os.getenv("OLLAMA_MODEL", "qwen3:8b")
     base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     timeout = float(os.getenv("OLLAMA_TIMEOUT", "120"))
     temperature = float(os.getenv("OLLAMA_TEMPERATURE", "0.2"))

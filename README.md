@@ -219,12 +219,13 @@ if __name__ == "__main__":
 #### Logger Messages Configuration
 What the logging setup gives you:
 1. Shows INFO/DEBUG logs
+
 So you see step planning, tool refinement, retries, confidence gating, etc.
 2. Adds the nice prefix
+
 Timestamp + level + logger name, e.g.
-21:07:30 INFO [agent_heart.react_agent] ...
+`21:07:30 INFO [agent_heart.react_agent] ...`
 3. Keeps logs and prints in order
-Using a stdout handler avoids weird interleaving where logs appear before/after print(...) unexpectedly.
 
 ```python
 import logging

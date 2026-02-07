@@ -47,9 +47,9 @@ class WikipediaTool(AgentTool):
     def __init__(
         self,
         user_agent: str = "AIResearchBot",
-        max_content_length: int = 10000,
-        prose_chars_target: int = 5500,
-        infobox_preview_max_chars: int = 4500,
+        max_content_length: int = 5000,
+        prose_chars_target: int = 2500,
+        infobox_preview_max_chars: int = 2500,
         infobox_rows_preview_limit: int = 80,
         include_infobox_kv_in_extracted: bool = True,
     ):

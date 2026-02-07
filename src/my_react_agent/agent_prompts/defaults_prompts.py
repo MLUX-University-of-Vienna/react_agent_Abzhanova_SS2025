@@ -125,7 +125,7 @@ DEFAULT_PROMPTS: dict[PromptId, PromptTemplate] = {
             "Summary:"
         ),
         required_vars={"question", "tool_result"},
-        description="Summarize a tool observation into a short fact list",
+        description="Summarise a tool observation into a short fact list",
         version="1",
     ),
     PromptId.UPDATE_FACT_STORE: PromptTemplate(
@@ -179,7 +179,7 @@ DEFAULT_PROMPTS: dict[PromptId, PromptTemplate] = {
             "Final answer:"
         ),
         required_vars={"question", "executed_steps_block", "context_block"},
-        description="Synthesize final answer from executed trace and context snippets",
+        description="Synthesise final answer from executed trace and context snippets",
         version="1",
     ),
     PromptId.ANSWER_BY_ITSELF: PromptTemplate(

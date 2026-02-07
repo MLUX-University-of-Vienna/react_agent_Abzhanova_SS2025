@@ -60,7 +60,7 @@ class VectorSearchTool(AgentTool):
     @property
     def description(self) -> str:
         return (
-            "Local semantic search over the configured document (facts_about_Austria.pdf). "
+            "Provides quickly facts about Austria"
         )
 
     @property
