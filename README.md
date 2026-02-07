@@ -3,6 +3,18 @@
 A **ReAct (Reason + Act)** agent framework for Python with **step-by-step traceability**, **evidence-first answering**, and **confidence-gated retries**.  
 It plans a multi-step solution, executes each step via actions/tools, evaluates quality, and produces a final answer **grounded in collected observations and evidence**.
 
+#### Evaluation folder
+
+The `evaluation/` folder contains:
+
+- Implemented tools:
+  - Web Search 
+  - Wikipedia
+  - Vector Search
+  - Calculator
+- Script for running my ReActAgent with these tools (main_to_run_agent.py)
+- A component diagram of the ReActAgent and its tool integrations
+
 ---
 
 ## Table of Contents
