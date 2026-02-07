@@ -1,6 +1,6 @@
 # my-react-agent
 
-A **ReAct (Reason + Act)** agent framework for Python with **step-by-step traceability**, **evidence-first answering**, and **confidence-gated retries**.  
+A **ReAct (Reason + Act)** agent framework for Python with **step-by-step traceability**, **evidence-first answering**, and **confidence-gated retries**. An agent designed for maintainability and tailored to your needs!
 It plans a multi-step solution, executes each step via actions/tools, evaluates quality, and produces a final answer **grounded in collected observations and evidence**.
 
 #### Evaluation folder
