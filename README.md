@@ -153,6 +153,8 @@ A tool must be a subclass AgentTool and implement:
 These methods are important for **refiner** taht is a prompt-based step that converts natural language into the exact format the tool expects. That's why in these example you can run not just **4*5** query but also **calculate 4*5/what is 4 times 5?/multiply 4 and 5**.
 
 ```python
+from __future__ import annotations
+
 from my_react_agent.agent_memory.data_structures import Evidence
 from my_react_agent.tool_management.tools.agent_tool import AgentTool
 
